@@ -573,14 +573,17 @@ __env_setup(dbp, txn, fname, dname, id, flags)
 		dbp->adj_fileid = ldbp->adj_fileid;
 		TAILQ_INSERT_AFTER(&env->dblist, ldbp, dbp, dblistlinks);
 	}
-	/*
-	 * RFC 0021: give the handle a process-local, never-reused serial so the
-	 * per-thread transient-cursor cache can tell this live handle from a
-	 * freed one reusing its heap address.  Assigned under mtx_dblist, before
-	 * the handle is reachable to any cache validator walking dblist.
-	 */
-	dbp->cursor_cache_gen = __db_cursor_cache_serial();
 	MUTEX_UNLOCK(env, env->mtx_dblist);
+
+	/*
+	 * RFC 0021: give the handle a process-local, never-reused serial and add
+	 * it to the cursor-cache live-handle registry, so the per-thread
+	 * transient-cursor cache can tell this live handle from a freed one
+	 * reusing its heap address -- without ever dereferencing a possibly-freed
+	 * handle or env.  Done outside mtx_dblist: the registry mutex is a leaf
+	 * and must not be taken under another lock (lock-order discipline).
+	 */
+	__db_cursor_cache_register(dbp);
 
 	return (0);
 }

@@ -56,46 +56,38 @@ static inline int __dbc_put_secondaries __P((DBC *,
  *
  * The cache is thread-local because DB_THREAD_INFO is a shared-region struct
  * holding roff_t offsets walked cross-process by failchk; a process-local DBC *
- * cannot live there.  The TLS guard mirrors src/mutex/mut_order.c; with no
- * thread-local storage the cache compiles to a no-op and the engine behaves
- * exactly like master.
+ * cannot live there.
+ *
+ * The cache is enabled only on a pthreads or hybrid mutex backend: it needs
+ * __thread TLS, a pthread_key destructor for the thread-exit flush, AND a
+ * process-global mutex (pthread_mutex) for the live-handle registry that makes
+ * stale-slot validation safe without dereferencing a possibly-freed DB/ENV
+ * (review #238: the registry replaces the earlier env->dblist check, which
+ * dereferenced a slot's ENV that could outlive its env on a cross-thread
+ * close).  On every other backend the cache compiles to a no-op and the engine
+ * behaves exactly like master.  The default autoconf build is hybrid, so the
+ * mainstream build keeps the cache; only niche backends (pure TAS assembly,
+ * UI-threads, Solaris LWP, WIN32) lose it.
  */
-#if defined(HAVE_MUTEX_PTHREADS) || defined(HAVE_MUTEX_HYBRID) ||	\
-    defined(HAVE_MUTEX_TAS) || defined(HAVE_MUTEX_UI_THREADS) ||		\
-    defined(HAVE_MUTEX_SOLARIS_LWP)
-#if defined(__GNUC__) || defined(__clang__) || defined(__SUNPRO_C)
+#if (defined(HAVE_MUTEX_PTHREADS) || defined(HAVE_MUTEX_HYBRID)) &&	\
+    (defined(__GNUC__) || defined(__clang__) || defined(__SUNPRO_C))
 #define	DBC_CACHE_TLS	__thread
-#elif defined(_MSC_VER)
-#define	DBC_CACHE_TLS	__declspec(thread)
-#endif
 #endif
 
 #ifdef DBC_CACHE_TLS
-/*
- * Thread-exit flush needs pthread_key_create + a destructor, available when the
- * mutex backend is pthreads (plain or hybrid).  Where TLS exists but pthreads
- * do not (WIN32 mutexes, Solaris LWP), the orphan fix (epoch + reconcile) still
- * applies; only the proactive thread-exit flush is absent, so an exited thread's
- * up-to-DBC_CACHE_SLOTS cursors stay parked until handle close -- correct, and
- * the master behaviour before this cache existed.
- */
-#if defined(HAVE_MUTEX_PTHREADS) || defined(HAVE_MUTEX_HYBRID)
-#define	DBC_CACHE_THREAD_EXIT
 #include <pthread.h>
-#endif
 
 static int __dbc_cache_on __P((void));
 static int __dbc_cache_eligible __P((DBC *));
 static int __dbc_cache_put __P((DBC *));
-static int __dbc_cache_handle_live __P((ENV *, DB *, u_int32_t));
+static int __dbc_cache_handle_live __P((DB *, u_int32_t));
 static int __dbc_cache_free_cursor __P((DBC *));
 static void __dbc_cache_reconcile __P((int));
 static int __dbc_cache_epoch_now __P((void));
 static void __dbc_cache_check_epoch __P((void));
-#ifdef DBC_CACHE_THREAD_EXIT
 static void __dbc_cache_thread_exit __P((void *));
 static void __dbc_cache_key_init __P((void));
-#endif
+static void __dbc_cache_registry_remove __P((DB *, u_int32_t));
 
 /*
  * Flags that make a transient cursor ineligible for the cache: anything that
@@ -109,8 +101,9 @@ static void __dbc_cache_key_init __P((void));
 #define	DBC_CACHE_SLOTS	4	/* Fixed per-thread; LRU-evict on miss. */
 
 struct __dbc_cache_entry {
-	ENV		*env;		/* Owning env (liveness oracle base). */
-	DB		*dbp;		/* Owning handle (identity key). */
+	DB		*dbp;		/* Owning handle (identity key; NEVER
+					 * dereferenced once possibly stale --
+					 * validated via the registry). */
 	DBC		*dbc;		/* Idle cached cursor, on dbp's active queue. */
 	DBTYPE		 dbtype;
 	u_int32_t	 gen;		/* dbp->cursor_cache_gen when cached. */
@@ -134,9 +127,9 @@ static DBC_CACHE_TLS int __dbc_cache_no_put;
  * dropped from its slot yet left DBC_ACTIVE on the active queue forever).  Here
  * the epoch is only a CHANGE SIGNAL: when a thread sees it has moved since its
  * last look, it RECONCILES its own slots -- keeping those whose handle is still
- * live, dropping only those whose handle was closed (validated against
- * env->dblist + the per-handle serial, never by dereferencing a dangling dbp).
- * So a live handle's slot is never orphaned.
+ * live, dropping only those whose handle was closed.  Liveness is decided by
+ * the process-global registry below, never by dereferencing a slot's dbp/env
+ * (which may point at freed memory after a cross-thread close).
  *
  * Atomic (db_atomic_t) so the cross-thread read in the transient path is
  * ordered against the write in handle close on weakly ordered CPUs; the old
@@ -144,6 +137,40 @@ static DBC_CACHE_TLS int __dbc_cache_no_put;
  */
 static db_atomic_t __dbc_cache_global_epoch;
 static int __dbc_cache_epoch_inited;
+
+/*
+ * Process-global live-handle registry (review #238 UAF fix).
+ *
+ * The earlier design validated a stale slot by walking slot->env->dblist.  That
+ * dereferences the slot's ENV, which can be FREED: a pool worker caches a
+ * cursor on handle H in env E and stays alive, the main thread closes H and E,
+ * and the worker's slot still names the freed E -- so its next reconcile (on
+ * thread exit or on a get against another env) touched freed memory
+ * (rev238_a10).
+ *
+ * The registry removes every such dereference.  It holds, under ONE process
+ * mutex that lives in no env, the (dbp, cursor_cache_gen) pair of every
+ * currently-open handle.  DB->open adds; __db_refresh removes BEFORE the
+ * handle's cursors are destroyed.  Reconcile looks a slot up by its stored
+ * (dbp pointer, serial): found => the handle is open, so BOTH the handle and
+ * its env are live and may be touched; not found => the handle is gone and the
+ * slot is dropped with nothing dereferenced.  The serial (never reused) defeats
+ * ABA when a freed DB's heap address is reused by a later open.
+ *
+ * Lock order: the registry mutex is a leaf taken in DB->open, __db_refresh and
+ * reconcile.  DB->open/__db_refresh take it holding NO cursor-queue or dblist
+ * mutex.  Reconcile takes it and then, only for a confirmed-live slot, takes
+ * CQ_LOCK (registry -> CQ_LOCK).  Nothing takes CQ_LOCK then the registry
+ * mutex, so there is no inversion.
+ */
+struct __dbc_reg_node {
+	struct __dbc_reg_node	*next;
+	DB			*dbp;
+	u_int32_t		 gen;
+};
+static pthread_mutex_t __dbc_reg_mtx = PTHREAD_MUTEX_INITIALIZER;
+static struct __dbc_reg_node *__dbc_reg_head;
+static struct __dbc_reg_node *__dbc_reg_free;
 
 /*
  * Process-global, never-reused handle serial.  DB->open stamps each handle
@@ -162,7 +189,6 @@ static int __dbc_cache_serial_inited;
  * exit).  The key's value is a non-NULL sentinel so the destructor fires; the
  * cache itself is the plain TLS array above.
  */
-#ifdef DBC_CACHE_THREAD_EXIT
 static pthread_key_t __dbc_cache_key;
 static pthread_once_t __dbc_cache_key_once = PTHREAD_ONCE_INIT;
 static DBC_CACHE_TLS int __dbc_cache_key_set;
@@ -172,7 +198,6 @@ __dbc_cache_key_init()
 {
 	(void)pthread_key_create(&__dbc_cache_key, __dbc_cache_thread_exit);
 }
-#endif
 
 static int
 __dbc_cache_on()
@@ -185,55 +210,85 @@ __dbc_cache_on()
 }
 
 /*
- * __db_cursor_cache_serial --
- *	Return the next process-local never-reused handle serial.  Called from
- *	DB->open under env->mtx_dblist.
+ * __db_cursor_cache_register --
+ *	Assign a never-reused serial to a freshly opened handle and add it to
+ *	the process-global live-handle registry.  Called from DB->open with no
+ *	cursor-queue or dblist mutex held (the registry mutex is a leaf).
  *
- * PUBLIC: u_int32_t __db_cursor_cache_serial __P((void));
+ * PUBLIC: void __db_cursor_cache_register __P((DB *));
  */
-u_int32_t
-__db_cursor_cache_serial()
+void
+__db_cursor_cache_register(dbp)
+	DB *dbp;
 {
+	struct __dbc_reg_node *n;
+	u_int32_t gen;
+
+	(void)pthread_mutex_lock(&__dbc_reg_mtx);
 	if (!__dbc_cache_serial_inited) {
 		atomic_init(&__dbc_cache_serial_ctr, 0);
 		__dbc_cache_serial_inited = 1;
 	}
+	gen = (u_int32_t)atomic_inc(NULL, &__dbc_cache_serial_ctr);
+	dbp->cursor_cache_gen = gen;
+
+	if ((n = __dbc_reg_free) != NULL)
+		__dbc_reg_free = n->next;
+	else
+		n = malloc(sizeof(*n));
 	/*
-	 * mtx_dblist (held by the caller) serialises opens on an env; across
-	 * envs the atomic increment keeps the counter monotonic.  0 is a valid
-	 * serial; slots are keyed by dbp AND env too, so 0 never aliases.
+	 * If the node allocation fails the handle is simply absent from the
+	 * registry: reconcile will treat its slots as "not live" and drop them
+	 * (safe -- at worst a cached cursor is not reused and is reclaimed at
+	 * handle close as on master).  So a NULL here is harmless.
 	 */
-	return ((u_int32_t)atomic_inc(NULL, &__dbc_cache_serial_ctr));
+	if (n != NULL) {
+		n->dbp = dbp;
+		n->gen = gen;
+		n->next = __dbc_reg_head;
+		__dbc_reg_head = n;
+	}
+	(void)pthread_mutex_unlock(&__dbc_reg_mtx);
+}
+
+/*
+ * __dbc_cache_registry_remove --
+ *	Remove a handle from the registry.  Caller must hold __dbc_reg_mtx.
+ */
+static void
+__dbc_cache_registry_remove(dbp, gen)
+	DB *dbp;
+	u_int32_t gen;
+{
+	struct __dbc_reg_node *n, **pp;
+
+	for (pp = &__dbc_reg_head; (n = *pp) != NULL; pp = &n->next)
+		if (n->dbp == dbp && n->gen == gen) {
+			*pp = n->next;
+			n->next = __dbc_reg_free;
+			__dbc_reg_free = n;
+			return;
+		}
 }
 
 /*
  * __dbc_cache_handle_live --
- *	Is dbp still an open handle of env, with this serial?  Validated by
- *	walking env->dblist under mtx_dblist -- never by dereferencing dbp,
- *	which may be a freed pointer.  env itself is guaranteed live here: a
- *	slot's env can only be torn down after all its handles close, and the
- *	closing thread clears its own slots for each handle at close (see
- *	__db_cursor_cache_discard), so no slot outlives its env.
+ *	Is (dbp, gen) a currently-open handle?  A pure registry lookup: it never
+ *	dereferences dbp (which may be a freed pointer) nor any env.  Caller must
+ *	hold __dbc_reg_mtx.  A "live" result means the handle is open, so both the
+ *	handle and its env are valid for the duration the caller holds the mutex.
  */
 static int
-__dbc_cache_handle_live(env, dbp, gen)
-	ENV *env;
+__dbc_cache_handle_live(dbp, gen)
 	DB *dbp;
 	u_int32_t gen;
 {
-	DB *ldbp;
-	int live;
+	struct __dbc_reg_node *n;
 
-	live = 0;
-	MUTEX_LOCK(env, env->mtx_dblist);
-	TAILQ_FOREACH(ldbp, &env->dblist, dblistlinks) {
-		if (ldbp == dbp) {
-			live = ldbp->cursor_cache_gen == gen;
-			break;
-		}
-	}
-	MUTEX_UNLOCK(env, env->mtx_dblist);
-	return (live);
+	for (n = __dbc_reg_head; n != NULL; n = n->next)
+		if (n->dbp == dbp && n->gen == gen)
+			return (1);
+	return (0);
 }
 
 /*
@@ -272,9 +327,17 @@ __dbc_cache_free_cursor(dbc)
  *	                          free queue;
  *	  - handle closed      -> the cursor was already destroyed by
  *	                          __db_refresh's active-queue walk; just drop the
- *	                          dangling slot without dereferencing it.
+ *	                          slot, dereferencing nothing.
  *	Keeping live slots is what fixes the orphan: a close elsewhere no longer
  *	strands a live handle's cached cursor.
+ *
+ *	The whole pass runs under __dbc_reg_mtx.  Holding it across the liveness
+ *	check AND the free_cursor call is what makes the free safe: a handle
+ *	cannot be removed from the registry (__db_cursor_cache_discard, which
+ *	runs before __db_refresh destroys the cursors) while we hold the mutex,
+ *	so a slot we see as live stays live -- its dbp and env are valid -- until
+ *	we release.  Lock order registry -> CQ_LOCK (taken inside free_cursor);
+ *	nothing takes CQ_LOCK then the registry mutex.
  */
 static void
 __dbc_cache_reconcile(free_queue)
@@ -283,20 +346,21 @@ __dbc_cache_reconcile(free_queue)
 	struct __dbc_cache_entry *e;
 	int i;
 
+	(void)pthread_mutex_lock(&__dbc_reg_mtx);
 	for (i = 0; i < DBC_CACHE_SLOTS; i++) {
 		e = &__dbc_cache[i];
 		if (e->dbc == NULL)
 			continue;
-		if (__dbc_cache_handle_live(e->env, e->dbp, e->gen)) {
+		if (__dbc_cache_handle_live(e->dbp, e->gen)) {
 			if (free_queue)
 				(void)__dbc_cache_free_cursor(e->dbc);
 			else
 				continue;	/* Keep it cached. */
 		}
-		e->env = NULL;
 		e->dbp = NULL;
 		e->dbc = NULL;
 	}
+	(void)pthread_mutex_unlock(&__dbc_reg_mtx);
 }
 
 /*
@@ -305,7 +369,6 @@ __dbc_cache_reconcile(free_queue)
  *	thread's still-live cached cursors to their handles' free queues so a
  *	churning thread pool cannot pile inert cursors on the active queue.
  */
-#ifdef DBC_CACHE_THREAD_EXIT
 static void
 __dbc_cache_thread_exit(arg)
 	void *arg;
@@ -319,7 +382,6 @@ __dbc_cache_thread_exit(arg)
 	__dbc_cache_reconcile(1);
 	__dbc_cache_key_set = 0;
 }
-#endif
 
 /*
  * __dbc_cache_epoch_now --
@@ -347,14 +409,12 @@ __dbc_cache_check_epoch()
 {
 	int now;
 
-#ifdef DBC_CACHE_THREAD_EXIT
 	if (!__dbc_cache_key_set) {
 		(void)pthread_once(&__dbc_cache_key_once, __dbc_cache_key_init);
 		/* Non-NULL sentinel so the destructor fires at thread exit. */
 		(void)pthread_setspecific(__dbc_cache_key, (void *)&__dbc_cache);
 		__dbc_cache_key_set = 1;
 	}
-#endif
 	now = __dbc_cache_epoch_now();
 	if (__dbc_cache_seen_epoch != now) {
 		__dbc_cache_reconcile(0);
@@ -445,7 +505,6 @@ __db_cursor_cache_get(dbp, dbtype, flags, dbcp)
 		    e->gen == dbp->cursor_cache_gen) {
 #endif
 			*dbcp = e->dbc;
-			e->env = NULL;
 			e->dbp = NULL;
 			e->dbc = NULL;
 			return (0);
@@ -489,20 +548,25 @@ __dbc_cache_put(dbc)
 	}
 
 	/*
-	 * Evicting a live slot: that cursor's handle is still live (if it had
-	 * closed, reconcile already dropped the slot), so genuinely close it
-	 * (active -> free queue under CQ_LOCK) before we overwrite the slot.
-	 * This keeps the hot path (free slot / same-handle reuse) off the queue
-	 * mutex while bounding the cache to DBC_CACHE_SLOTS.
+	 * Evicting an occupied slot: close its cursor (active -> free queue).
+	 * The victim's handle may have been closed by ANOTHER thread since we
+	 * last reconciled, so validate it against the registry under
+	 * __dbc_reg_mtx and free only if still live; if it is gone its cursor
+	 * was already destroyed by __db_refresh, so just drop the slot without
+	 * touching it.  Holding the registry mutex across the check and the free
+	 * keeps the handle live for the duration (same rule as reconcile).  The
+	 * hot path (free slot / same-handle reuse below) never reaches here, so
+	 * the mutex stays off it.
 	 */
 	if (victim->dbc != NULL) {
-		(void)__dbc_cache_free_cursor(victim->dbc);
-		victim->env = NULL;
+		(void)pthread_mutex_lock(&__dbc_reg_mtx);
+		if (__dbc_cache_handle_live(victim->dbp, victim->gen))
+			(void)__dbc_cache_free_cursor(victim->dbc);
+		(void)pthread_mutex_unlock(&__dbc_reg_mtx);
 		victim->dbp = NULL;
 		victim->dbc = NULL;
 	}
 
-	victim->env = dbp->env;
 	victim->dbp = dbp;
 	victim->dbc = dbc;
 	victim->dbtype = dbc->dbtype;
@@ -521,6 +585,22 @@ __dbc_cache_put(dbc)
  *	  2. Bump the process-global epoch so OTHER threads reconcile their
  *	     slots and drop the ones that named this handle.
  *
+/*
+ * __db_cursor_cache_discard --
+ *	Called at the start of __db_refresh, BEFORE the handle's cursors are
+ *	destroyed.  Three jobs:
+ *	  1. Remove the handle from the live-handle registry under __dbc_reg_mtx.
+ *	     This happens-before the cursor teardown, so any other thread's
+ *	     reconcile either (a) still sees the handle live and, holding
+ *	     __dbc_reg_mtx, finishes returning the cached cursor to the free
+ *	     queue before this remove can proceed, or (b) sees it gone and drops
+ *	     the slot untouched.  Either way no reconcile touches a destroyed
+ *	     cursor or a freed handle/env.
+ *	  2. Clear THIS (closing) thread's own slots for dbp -- its own cursors
+ *	     are about to be destroyed by the active-queue walk.
+ *	  3. Bump the process-global epoch so OTHER threads reconcile and drop
+ *	     the slots that named this handle.
+ *
  * PUBLIC: void __db_cursor_cache_discard __P((ENV *, DB *));
  */
 void
@@ -531,22 +611,24 @@ __db_cursor_cache_discard(env, dbp)
 	struct __dbc_cache_entry *e;
 	int i;
 
-	COMPQUIET(env, NULL);
+	/* 1. Remove from the registry (ordered before cursor teardown). */
+	(void)pthread_mutex_lock(&__dbc_reg_mtx);
+	__dbc_cache_registry_remove(dbp, dbp->cursor_cache_gen);
+	(void)pthread_mutex_unlock(&__dbc_reg_mtx);
 
-	/* 1. Drop this thread's own slots for the closing handle. */
+	/* 2. Drop this thread's own slots for the closing handle. */
 #ifndef DBC_CACHE_SABOTAGE
 	for (i = 0; i < DBC_CACHE_SLOTS; i++) {
 		e = &__dbc_cache[i];
 		if (e->dbp == dbp) {
-			e->env = NULL;
 			e->dbp = NULL;
 			e->dbc = NULL;
 		}
 	}
 #else
 	/*
-	 * SABOTAGE ARM: skip the closing thread's self-clear too.  With both
-	 * the self-clear (here) and the reconcile sweep (__db_cursor_cache_get)
+	 * SABOTAGE ARM: skip the closing thread's self-clear.  With both the
+	 * self-clear (here) and the reconcile sweep (__db_cursor_cache_get)
 	 * disabled, a slot pointing at the just-closed handle survives, and a
 	 * reopened handle that reuses the freed DB/DBC memory then reuses a
 	 * destroyed cursor -- the use-after-free the test must catch.
@@ -555,7 +637,7 @@ __db_cursor_cache_discard(env, dbp)
 	COMPQUIET(i, 0);
 #endif
 
-	/* 2. Signal every thread that something closed. */
+	/* 3. Signal every thread that something closed. */
 	(void)__dbc_cache_epoch_now();		/* Ensure initialised. */
 	(void)atomic_inc(env, &__dbc_cache_global_epoch);
 	if (atomic_read(&__dbc_cache_global_epoch) == 0)
@@ -600,10 +682,11 @@ __db_cursor_cache_get(dbp, dbtype, flags, dbcp)
 	*dbcp = NULL;
 	return (0);
 }
-u_int32_t
-__db_cursor_cache_serial()
+void
+__db_cursor_cache_register(dbp)
+	DB *dbp;
 {
-	return (0);
+	COMPQUIET(dbp, NULL);
 }
 void
 __db_cursor_cache_discard(env, dbp)

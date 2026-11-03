@@ -66,7 +66,7 @@ int __db_init_print __P((ENV *, DB_DISTAB *));
 int __db_dbbackup_pp __P((DB_ENV *, const char *, const char *, u_int32_t));
 int __db_dbbackup __P((DB_ENV *, DB_THREAD_INFO *, const char *, const char *, u_int32_t));
 int __db_backup_pp __P((DB_ENV *, const char *, u_int32_t));
-u_int32_t __db_cursor_cache_serial __P((void));
+void __db_cursor_cache_register __P((DB *));
 int __db_cursor_cache_get __P((DB *, DBTYPE, int, DBC **));
 void __db_cursor_cache_discard __P((ENV *, DB *));
 void __db_cursor_cache_refresh_enter __P((void));
