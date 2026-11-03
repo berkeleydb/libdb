@@ -50,6 +50,40 @@ ha_build() {
 
 ha_send() { timeout 5 sh -c "echo '$2' > '$HA_RUN/ctl.$1'" 2>/dev/null || true; }
 
+# ha_tls_gen_certs -- make a CA and one cert/key per node under $HA_RUN (and the
+# node homes).  Call AFTER ha_group_up's run dir exists is not possible (certs
+# must exist before the node starts), so the scenario sets HA_RUN itself... no:
+# instead the scenario calls ha_tls_setup BEFORE ha_group_up, which makes the
+# run dir, the CA and per-node certs, and sets HA_TLS=1.  Echoes each node's
+# sha256 fingerprint (for pinning).
+ha_tls_setup() {
+	local nsites="$1"; shift 2>/dev/null || true
+	HA_RUN=$(fi_mkrun "s-${RT_RUN:-run}")
+	local subj="/CN=dstrt"
+	# CA
+	openssl req -x509 -newkey rsa:2048 -nodes -keyout "$HA_RUN/ca.key" \
+	    -out "$HA_RUN/ca.crt" -days 2 -subj "$subj-ca" >/dev/null 2>&1
+	local i c home
+	for i in $(seq 1 "$nsites"); do
+		c=$(printf "\\$(printf '%03o' $((96 + i)))")
+		home="$HA_RUN/$c"; mkdir -p "$home"
+		openssl req -newkey rsa:2048 -nodes -keyout "$home/node.key" \
+		    -out "$home/node.csr" -subj "$subj-$c" >/dev/null 2>&1
+		openssl x509 -req -in "$home/node.csr" -CA "$HA_RUN/ca.crt" \
+		    -CAkey "$HA_RUN/ca.key" -CAcreateserial -days 2 \
+		    -out "$home/node.crt" >/dev/null 2>&1
+	done
+	HA_TLS=1
+	# reuse HA_RUN in ha_group_up instead of making a new one.
+	HA_RUN_PRESET="$HA_RUN"
+}
+
+# echo a node's cert sha256 fingerprint (hex, no colons) for pinning.
+ha_tls_fpr() {
+	openssl x509 -in "$HA_RUN/$1/node.crt" -noout -fingerprint -sha256 2>/dev/null \
+	    | sed 's/.*=//; s/://g' | tr 'A-F' 'a-f'
+}
+
 # Return the node currently reporting master.  A node's current role is the
 # LAST ROLE line in its own ev log; among nodes whose last role is master, the
 # one with the highest generation is the live master (a stale pre-failover
@@ -105,6 +139,14 @@ _ha_launch_node() {
 			rep_set_timeout db_rep_connection_retry 1000000
 			rep_set_timeout db_rep_ack_timeout 1000000
 		EOF
+		# S7: TLS directives (RFC 0018) for this node, if configured.
+		if [ -n "${HA_TLS:-}" ]; then
+			echo "repmgr_tls cert $home/node.crt key $home/node.key ca $HA_RUN/ca.crt flags require,verify" >> "$home/DB_CONFIG"
+			local pin
+			for pin in ${HA_TLS_PINS:-}; do
+				echo "repmgr_tls_pin $pin" >> "$home/DB_CONFIG"
+			done
+		fi
 	fi
 	peers=""
 	for other in $HA_NODES; do
@@ -164,7 +206,13 @@ ha_group_up() {
 	done
 	HA_NODES=$(echo $names)
 
-	HA_RUN=$(fi_mkrun "s-${RT_RUN:-run}")
+	# reuse the run dir ha_tls_setup already created (so the certs match),
+	# else make a fresh one.
+	if [ -n "${HA_RUN_PRESET:-}" ]; then
+		HA_RUN="$HA_RUN_PRESET"; HA_RUN_PRESET=""
+	else
+		HA_RUN=$(fi_mkrun "s-${RT_RUN:-run}")
+	fi
 	export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:$(cd "$BUILD/.libs" 2>/dev/null && pwd)"
 
 	net_up "$nsites" $HA_NODES
