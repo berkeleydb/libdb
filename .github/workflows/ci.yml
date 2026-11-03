@@ -519,6 +519,77 @@ jobs:
         run: ./test/check_manifest.sh --tier tcl
 
   # ----------------------------------------------------------------------------
+  # TCL core suite on the PR gate (review item A11).  The canonical
+  # btree/hash/recno + recd + sdb core used to run only best-effort nightly
+  # (ci-extended.yml run_std); per PR only lock001/txn001/test001/ssi001/ssi002
+  # ran, so an access-method, recovery or sub-database regression reached master
+  # on the strength of five tests.  This runs that core on every push/PR, built
+  # --enable-diagnostic so the DIAGNOSTIC asserts are exercised by the fast
+  # signal, and SHARDED so each shard stays well under ~20 minutes.
+  #
+  # Each shard is its own manifest tier (tcl-core-<shard>): the shards are
+  # independent matrix jobs, so a per-shard tier lets the gate assert exactly
+  # this shard's (test, method) cells ran without treating the other shards as
+  # MISSING.  run_core_shard.sh runs each test in a FRESH tclsh with a clean
+  # TESTDIR and emits one verdict per cell.
+  #
+  # Shard timings (dev box, c6i.8xlarge, --enable-diagnostic) are in the PR;
+  # the slowest shard is well under the per-shard budget below.
+  # ----------------------------------------------------------------------------
+  tcl-core:
+    name: tcl core ${{ matrix.shard }} (--enable-diagnostic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [btree, hash, recno, recd-btree, recd-hash, sdb]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tcl
+        run: sudo apt-get update && sudo apt-get install -y tcl-dev tcl
+      - name: Configure (diagnostic + test + tcl)
+        working-directory: build_unix
+        run: ../dist/configure --enable-diagnostic --enable-test --with-tcl=/usr/lib/tcl8.6
+      - name: Build
+        working-directory: build_unix
+        run: make -j$(nproc)
+      - name: Run core shard
+        working-directory: build_unix
+        run: sh ../test/tcl/run_core_shard.sh ${{ matrix.shard }}
+      - name: Manifest gate (assert every cell in this shard produced a verdict)
+        if: always()
+        run: ./test/check_manifest.sh --tier tcl-core-${{ matrix.shard }}
+
+  # ----------------------------------------------------------------------------
+  # test/db regression tier on an --enable-diagnostic build (review item A11).
+  # The posix `default` job runs the db tier on a plain build; no job ran it
+  # with DIAGNOSTIC asserts on, so the heavy invariant checks in the engine
+  # were never exercised by the fast PR signal.  Blocking, like the posix db
+  # tier it mirrors.
+  # ----------------------------------------------------------------------------
+  db-diagnostic:
+    name: test/db (--enable-diagnostic, gcc)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CC: gcc
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure (--enable-diagnostic)
+        working-directory: build_unix
+        run: ../dist/configure --enable-diagnostic
+      - name: Build
+        working-directory: build_unix
+        run: make -j$(nproc)
+      - name: Regression runners (test/db)
+        working-directory: build_unix
+        run: sh ../test/db/run_all.sh
+      - name: Manifest gate (assert every test/db runner produced a verdict)
+        if: always()
+        run: ./test/check_manifest.sh --tier db
+
+  # ----------------------------------------------------------------------------
   # Deterministic Simulation Testing (DST): build --enable-dst, run one capstone
   # per fault class + the multi-process failchk pilot, and enforce the
   # zero-overhead-when-off gate (an --enable-dst-off build must contain 0
