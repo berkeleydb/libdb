@@ -61,6 +61,7 @@ static struct txnout *txns = NULL;
 static int violations = 0;
 static long g_lineno = 0;	/* global append order across all ack files */
 static int g_fileidx = 0;	/* which ack file we are parsing */
+static long n_ack = 0, n_fail = 0, n_unknown = 0;  /* acked/failed/unknown looked up */
 
 /* combine the current file index and a txnid into a collision-free key. */
 #define TXNKEY(id) (((uint64_t)g_fileidx << 32) | (uint32_t)(id))
@@ -304,6 +305,7 @@ main(int argc, char *argv[])
 		ret = cur->get(cur, NULL, &key, &data, 0);
 
 		if (e->outcome == 1) {		/* FAIL: must NOT be visible */
+			n_fail++;
 			/* Only a violation if THIS op's value is present.  A
 			 * FAILed put whose key holds an earlier ACKed value is
 			 * fine -- we verify the latest op, so a FAILed op is
@@ -314,12 +316,17 @@ main(int argc, char *argv[])
 				    "put of %s is visible\n", e->key);
 				violations++;
 			}
+			if (ret == 0 && data.data != NULL) free(data.data);
 			continue;
 		}
-		if (e->outcome == 2)		/* UNKNOWN: either way is ok */
+		if (e->outcome == 2) {		/* UNKNOWN: either way is ok */
+			n_unknown++;
+			if (ret == 0 && data.data != NULL) free(data.data);
 			continue;
+		}
 
-		/* ACK (rule 1) */
+		/* ACK (rule 1): this op was acked and we are now looking it up. */
+		n_ack++;
 		if (e->op == 'p') {
 			if (ret == DB_NOTFOUND) {
 				printf("VIOLATION (rule 1, durability): ACKed "
@@ -350,7 +357,24 @@ main(int argc, char *argv[])
 
 	(void)env->close(env, 0);
 
-	if (violations == 0) { printf("PASS\n"); return (0); }
-	printf("FAIL: %d violation(s)\n", violations);
+	/* Non-vacuity: a PASS over ZERO acked ops is the vacuous-green shape --
+	 * the oracle looked up nothing, so it proves nothing.  Report the counts
+	 * always, and FAIL VACUOUS when no acked op was checked.  (An empty ack
+	 * log, or an ack log whose txns all FAILed/are UNKNOWN, lands here.)
+	 * F2's HA scenarios rely on this guard. */
+	if (violations == 0 && n_ack == 0) {
+		printf("VACUOUS: 0 acked ops checked "
+		    "(checked %ld acked, %ld failed, %ld unknown)\n",
+		    n_ack, n_fail, n_unknown);
+		return (1);
+	}
+	if (violations == 0) {
+		printf("PASS (checked %ld acked, %ld failed, %ld unknown)\n",
+		    n_ack, n_fail, n_unknown);
+		return (0);
+	}
+	printf("FAIL: %d violation(s) "
+	    "(checked %ld acked, %ld failed, %ld unknown)\n",
+	    violations, n_ack, n_fail, n_unknown);
 	return (1);
 }
