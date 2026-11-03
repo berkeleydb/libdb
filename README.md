@@ -18,6 +18,31 @@ Hash, Queue, Recno) with ACID transactions, fine-grained locking, write-ahead
 logging, MVCC snapshot isolation, and replication. It is a library you link into
 your application — no server process.
 
+## Who libdb is for, and why in 2026
+
+libdb is for software that embeds a transactional key/value store directly in
+the process: directory and mail servers, package and metadata indexes, local
+state for agents and appliances, and the large installed base of Berkeley DB
+applications that need a maintained, Sleepycat-licensed continuation.
+
+Against the obvious alternatives, libdb occupies one specific corner. SQLite is
+an SQL engine; libdb is not — it gives you the storage layer directly. RocksDB,
+LMDB and WiredTiger each give you one storage structure; libdb gives you all of
+them — B-tree, Hash, Queue, Recno and Heap — behind one API, in one small
+library. Several processes can open the same environment through shared memory
+regions, without a server to run or a daemon to supervise. The code is under the
+Sleepycat license (BSD-style, no copyleft), the last line Oracle shipped before
+moving to AGPL. And the LTS lines freeze the on-disk, log and region formats:
+an environment you create today keeps opening, unchanged, for the life of the
+line.
+
+The trade is real. On concurrent reads, scans and TPC-C-like work libdb is
+1.3–7× faster than the last Oracle release, but high-thread inserts can be
+slower (see [`test/bench/XREL-2026-10.md`](test/bench/XREL-2026-10.md)). If you
+need a write-optimized LSM engine or a SQL database, look elsewhere. libdb does
+not try to be a server or a SQL engine, and it keeps the small footprint that
+no server-based store can match.
+
 ## Branches and tags
 
 | Ref | What it is |
