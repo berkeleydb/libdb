@@ -85,16 +85,22 @@ Each seed drives a full scenario; a FAIL is retried k/10 per §2.5.
    mount. Fixed: `net_up` retries the bridge-namespace creation under the
    build lock. Reproduce: it only appears as the very first topology of a cold
    sweep; the re-run passes (k=0 after the fix).
-2. **S7 seed 10 rule-5 ROLE-line timing (open).** Under TLS + net-partition the
-   single-master check intermittently (k≈1-2/3) flagged "two masters in a
-   generation" because two nodes read the same `rep_stat` generation across an
-   election hand-off (the generation had not advanced for a beat when
-   `DB_EVENT_REP_MASTER` fired). It is NOT a split brain: convergence (rule 4)
-   is OK and `rtcheck` PASSes with no divergent committed data on any of these
-   seeds. The fix in flight derives rule 5 from committed `(gen, LSN)` data (a
-   true split writes incompatible values at the same generation on different
-   nodes) rather than from the racy ROLE event lines. Reproduce:
-   `BUILD=<tls build> bash test/dst-rt/scenarios/s7_tls_netfaults.sh 10`.
+2. **S7 seed 10 rule-5 ROLE-line gen sampling (root-caused; rtnode, not libdb).**
+   Under TLS + net-partition the single-master check intermittently (k≈2/6)
+   flagged "two masters in generation 1". Ground truth with the engine's own
+   verbose log (`DB_VERB_REPLICATION` on every node) shows this is NOT a split:
+   the engine's `New master gen` broadcasts are `a@gen1`, `c@gen2`, `c@gen3` —
+   exactly one master per generation. The false positive is rtnode's ROLE line:
+   when `c` won the election to **gen 2** and `DB_EVENT_REP_MASTER` fired,
+   rtnode sampled `rep_stat->st_gen` from the event callback and got the stale
+   **gen 1**, so `c` logged `ROLE master gen=1` while the engine's newmaster
+   broadcast for that same transition said gen 2. The commit token
+   (`DB_TXN->set_commit_token`), which the ack log already records, carries the
+   authoritative generation; rule 5 is therefore keyed on the commit-token gen
+   (the `(data)` check), with the ROLE line advisory. No libdb bug: repmgr held
+   one master per generation throughout. Reproduce with ground truth:
+   `HA_VERBOSE=1 BUILD=<tls build> bash test/dst-rt/scenarios/s7_tls_netfaults.sh 10`
+   then read `ev.<node>.log.msg` for the `New master gen` lines.
 
 ## Engine findings (libdb bugs)
 

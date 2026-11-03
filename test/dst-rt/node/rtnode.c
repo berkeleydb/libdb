@@ -72,6 +72,8 @@ struct node {
 	fi_acklog al;
 	int have_ack;
 	FILE *ev;
+	FILE *msgfp;		/* engine message file when --verbose */
+	int verbose;
 	int current_gen, is_master;
 };
 
@@ -133,9 +135,25 @@ event_cb(DB_ENV *dbenv, u_int32_t which, void *info)
 	(void)dbenv; (void)info;
 	switch (which) {
 	case DB_EVENT_REP_MASTER:
-	case DB_EVENT_REP_ELECTED:
+		/*
+		 * The role change to master.  repmgr has already called
+		 * rep_start(MASTER) and SET_GEN(new_gen) by now, so cur_gen() is
+		 * the node's real master generation (rule 5 keys on this).
+		 */
 		N.is_master = 1;
 		ev_emit("ROLE master gen=%d", cur_gen());
+		break;
+	case DB_EVENT_REP_ELECTED:
+		/*
+		 * ELECTED only means "you won the election, call rep_start(MASTER)"
+		 * (repmgr_msg.c).  It is fired by __rep_elect_done BEFORE
+		 * SET_GEN(new_gen), so st_gen here is still the OLD generation --
+		 * emitting a ROLE master line here logged a stale gen and
+		 * false-flagged a split (FINDINGS S7).  It is NOT the role change;
+		 * log it without a role or gen.  The MASTER event above is the
+		 * role change.
+		 */
+		ev_emit("ELECTED");
 		break;
 	case DB_EVENT_REP_CLIENT:
 		N.is_master = 0;
@@ -188,6 +206,23 @@ open_env(void)
 	(void)N.env->set_cachesize(N.env, 0,
 	    (u_int32_t)N.cachesz_mb * 1024 * 1024, 1);
 	(void)N.env->set_event_notify(N.env, event_cb);
+	/*
+	 * --verbose (S7 ground-truth): route the engine's own replication
+	 * messages to <ev>.msg so each node logs "New master gen %lu, egen %lu"
+	 * at the moment it becomes master.  The generation is SET_GEN'd before
+	 * DB_EVENT_REP_MASTER fires, so this line is the authoritative gen.
+	 */
+	if (N.verbose && N.evpath != NULL) {
+		static char msgpath[1200];
+		snprintf(msgpath, sizeof(msgpath), "%s.msg", N.evpath);
+		N.msgfp = fopen(msgpath, "a");
+		if (N.msgfp != NULL)
+			N.env->set_msgfile(N.env, N.msgfp);
+		(void)N.env->set_verbose(N.env, DB_VERB_REPLICATION, 1);
+		(void)N.env->set_verbose(N.env, DB_VERB_REP_MISC, 1);
+		(void)N.env->set_verbose(N.env, DB_VERB_REPMGR_MISC, 1);
+		(void)N.env->set_verbose(N.env, DB_VERB_REP_ELECT, 1);
+	}
 
 	flags = DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL |
 	    DB_INIT_TXN | DB_THREAD | DB_RECOVER;
@@ -579,6 +614,7 @@ main(int argc, char *argv[])
 		} else if (strcmp(argv[i], "--ack-policy") == 0 && i+1 < argc) {
 			N.ack_policy = ack_policy_code(argv[++i]);
 		} else if (strcmp(argv[i], "--nosync") == 0) N.nosync = 1;
+		else if (strcmp(argv[i], "--verbose") == 0) N.verbose = 1;
 		else if (strcmp(argv[i], "--cachesz-mb") == 0 && i+1 < argc) N.cachesz_mb = atol(argv[++i]);
 		else if (strcmp(argv[i], "--keys") == 0 && i+1 < argc) N.keys = atol(argv[++i]);
 		else if (strcmp(argv[i], "--valsz") == 0 && i+1 < argc) N.valsz = atol(argv[++i]);

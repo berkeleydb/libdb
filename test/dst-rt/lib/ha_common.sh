@@ -172,6 +172,9 @@ _ha_launch_node() {
 	# the reproduce line shows them.  A DB_CONFIG is still written above as a
 	# fallback; the command line wins.
 	local tmo="--hb-send ${HA_HB_SEND:-500000} --hb-mon ${HA_HB_MON:-1500000} --elect-to ${HA_ELECT_TO:-1000000} --conn-retry ${HA_CONN_RETRY:-1000000} --ack-to ${HA_ACK_TO:-1000000}"
+	# HA_VERBOSE=1 turns on rtnode --verbose (engine rep message file per node),
+	# used to get ground truth on the master-generation at each election.
+	[ "${HA_VERBOSE:-0}" = 1 ] && tmo="$tmo --verbose"
 	# S6: one node may run under a libfiu I/O plan (fiu-run -x ... --).  The
 	# ack log is kept out of fault scope by the raw-syscall writer, so its
 	# own writes are never failed.  To keep the (nested) quoting of the
@@ -309,28 +312,52 @@ ha_quiesce() {
 # rules 1-3/7 are delegated to rtcheck across all homes.
 HA_VIOL=0
 
-# rule 5: at most one node reporting master per election generation.
+# rule 5: at most one master per election GENERATION, GATED two independent ways
+# (the lead):
+#   (role) no two DISTINCT nodes log `ROLE master gen=N` for the same N.  The
+#          ROLE master line is emitted ONLY on DB_EVENT_REP_MASTER (not
+#          ELECTED, which fires before SET_GEN and carried a stale gen -- the
+#          old false positive, now fixed in rtnode), so by this point
+#          rep_start(MASTER)+SET_GEN have run and cur_gen() is the real master
+#          generation.
+#   (data) no two DISTINCT nodes ACKed a write in the same generation (the
+#          commit-token `gen=<n>` in the ack log).  Catches a split that
+#          accepted writes even if a ROLE line was lost.
+# Both halves gate; either one firing is a rule-5 violation.
 ha_check_single_master() {
-	# collect "gen node" from every "ROLE master gen=N" across ev logs.
 	local tmp n; tmp=$(mktemp)
+	# (role)
 	for n in $HA_NODES; do
 		[ -f "$HA_RUN/ev.$n.log" ] || continue
 		sed -n 's/^ROLE master gen=\([0-9]*\).*/\1 '"$n"'/p' \
 		    "$HA_RUN/ev.$n.log" >> "$tmp"
 	done
-	# a violation is a generation with >1 distinct master node.
-	local bad
-	bad=$(awk '{seen[$1]=seen[$1] " " $2} END{for(g in seen){
-		n=split(seen[g],a," "); u=0; delete d;
-		for(i=1;i<=n;i++){if(!(a[i] in d)){d[a[i]]=1;u++}}
-		if(u>1) print g": "seen[g]}}' "$tmp")
+	local bad_role
+	bad_role=$(sort -u "$tmp" | awk '{seen[$1]=seen[$1]" "$2} END{for(g in seen){
+		nn=split(seen[g],a," "); u=0; delete d;
+		for(i=1;i<=nn;i++){if(a[i]!="" && !(a[i] in d)){d[a[i]]=1;u++}}
+		if(u>1) print g": "seen[g]}}')
+	: > "$tmp"
+	# (data)
+	for n in $HA_NODES; do
+		[ -f "$HA_RUN/ack.$n.log" ] || continue
+		awk -v node="$n" '$3=="txn" && $7=="ACK"{
+			g=$NF; sub(/^gen=/,"",g); if (g!="" && g!="0") print g" "node
+		}' "$HA_RUN/ack.$n.log" | sort -u >> "$tmp"
+	done
+	local bad_data
+	bad_data=$(sort -u "$tmp" | awk '{seen[$1]=seen[$1]" "$2} END{for(g in seen){
+		nn=split(seen[g],a," "); u=0; delete d;
+		for(i=1;i<=nn;i++){if(a[i]!="" && !(a[i] in d)){d[a[i]]=1;u++}}
+		if(u>1) print g": "seen[g]}}')
 	rm -f "$tmp"
-	if [ -n "$bad" ]; then
+	if [ -n "$bad_role" ] || [ -n "$bad_data" ]; then
 		echo "VIOLATION (rule 5, two masters in a generation):"
-		echo "$bad" | sed 's/^/  gen /'
+		[ -n "$bad_role" ] && echo "$bad_role" | sed 's/^/  (role) gen /'
+		[ -n "$bad_data" ] && echo "$bad_data" | sed 's/^/  (data,commit-token) gen /'
 		HA_VIOL=$((HA_VIOL + 1))
 	else
-		echo "rule 5 (single master per gen): OK"
+		echo "rule 5 (single master per gen, role+data): OK"
 	fi
 }
 
