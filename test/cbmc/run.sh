@@ -64,6 +64,7 @@ run ack-allpeers harness_ackpolicy.c harness_all_peers --unwind 6 --unwinding-as
 run ack-onepeer  harness_ackpolicy.c harness_one_peer  --unwind 6 --unwinding-assertions  # H4 ONE_PEER
 run ack-2site    harness_ackpolicy.c harness_twosite   --unwind 6 --unwinding-assertions  # H4 2-site cases
 run ack-shortcut harness_ackpolicy.c harness_shortcut  --unwind 6 --unwinding-assertions  # H4 send shortcuts
+run qam-recno    harness_qam_recno.c harness --conversion-check                # Q1 queue record arithmetic
 
 # okitem proves the safety guarantee on the real (parenthesised) HPAGE_PTYPE.
 # We drop --pointer-check here (keeping --bounds-check + __CPROVER_r_ok, the
@@ -113,6 +114,10 @@ sabotage okitem-sab harness_okitem.c harness -DHPAGE_PTYPE_SABOTAGE \
 # drop -DB1_FIXED.  See README.md "BUG FOUND".
 sabotage b1-decompress harness_bt_decompress.c harness \
 	--bounds-check --pointer-check --unwind 10
+# Q1: dropping the 1-based "- 1" in QAM_RECNO_INDEX (an off-by-one) breaks the
+# index-in-range bound and the (page,index)->recno round-trip.
+sabotage qam-recno-sab harness_qam_recno.c harness -DQAM_SABOTAGE \
+	--bounds-check --pointer-check --conversion-check
 # H1: swapping LOG_COMPARE's order arms breaks winner-maximises-LSN (d).
 sabotage cmpvote-sab harness_cmpvote.c harness_likepri -DCMPVOTE_SABOTAGE \
 	--bounds-check --pointer-check
