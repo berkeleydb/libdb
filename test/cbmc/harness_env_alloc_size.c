@@ -32,9 +32,8 @@
  * modelled as ALLOC_ELEMENT_SIZE below (its real LP64 layout: two
  * SH_TAILQ_ENTRY of two db_ssize_t each, plus two uintmax_t).
  *
- * Bound: len in 0..LEN_MAX (a region chunk, far below SIZE_MAX; the allocator
- *        is never asked for a size near the address-space limit, where the
- *        `len + overhead + align` sum would of course overflow).  Loop-free
+ * Bound: len in 0..SIZE_MAX-64; only the last 64 values, where
+ *        `len + overhead + align` must overflow, are excluded.  Loop-free
  *        apart from the <= 11-iteration SET_QUEUE_FOR_SIZE loop.
  */
 
@@ -93,10 +92,8 @@ typedef unsigned int u_int;
 } while (0)
 /* --- end verbatim macros --- */
 
-/* The largest size class is 1024 << 10 == 1 MB.  Bound len well below
- * SIZE_MAX (see header): a few MB covers every region-chunk request and
- * keeps the overhead+alignment sum from overflowing size_t. */
-#define	LEN_MAX ((size_t)0x4000000)	/* 64 MB */
+/* Exclude only the top 64 values, where overhead + alignment must wrap. */
+#define	LEN_MAX ((size_t)-1 - 64)	/* all of size_t short of the rounding */
 
 size_t nondet_size(void);
 

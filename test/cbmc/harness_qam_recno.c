@@ -158,8 +158,10 @@ void harness(void)
 		 * arithmetic stays inside u_int32_t without wrap (the engine's
 		 * q_root is 1 and page numbers are bounded by the file size;
 		 * here we just keep (r-1)/rec_page + q_root from overflowing). */
-		__CPROVER_assume(r >= 1 && r <= 0x10000);
-		__CPROVER_assume(q.q_root <= 0x10000);
+		__CPROVER_assume(r >= 1);
+		/* Queue has no subdatabases: base_pgno is 0, so q_root is 1
+		 * (qam_open.c __qam_open).  Every recno >= 1 is covered. */
+		__CPROVER_assume(q.q_root == 1);
 
 		db_pgno_t pg = QAM_RECNO_PAGE(&q, r);
 		u_int32_t idx = QAM_RECNO_INDEX(&q, pg, r);
