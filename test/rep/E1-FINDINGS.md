@@ -81,8 +81,10 @@ not reset between elections -- `__rep_elect_done` resets `sites`/`votes`):
   4. higher LSN wins;
   5. higher priority value wins;
   6. higher tiebreaker wins;
-  7. higher eid wins -- the final always-distinct discriminator, so the order
-     is total even if two sites draw equal random tiebreakers.
+  7. higher eid wins -- the final discriminator, so each site's order is
+     total.  eids are local to each site, so this does not make different
+     sites agree on a full tie; the random 32-bit tiebreaker does, except on
+     an exact collision, which costs at most an extra election round.
 
 ## Mixed-version (rolling-upgrade) compatibility
 
