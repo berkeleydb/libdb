@@ -155,9 +155,14 @@ __rep_cmp_vote(env, rep, eid, lsnp, priority, gen, data_gen, tiebreaker, flags)
 	 *   4. higher LSN wins;
 	 *   5. higher priority value wins;
 	 *   6. higher tiebreaker wins;
-	 *   7. higher eid wins -- the final, always-distinct discriminator
-	 *      (two sites never share an eid), so the relation is a TOTAL
-	 *      order even when two sites draw equal random tiebreakers.
+	 *   7. higher eid wins -- the final discriminator, so the order is
+	 *      TOTAL on this site even if two votes tie on everything above.
+	 *      eids are local (repmgr numbers sites in the order it learns of
+	 *      them; base API eids are the application's), so this step makes
+	 *      each site independent of arrival order but does not make
+	 *      different sites agree.  The random 32-bit tiebreaker does that,
+	 *      except on an exact collision; a collision costs at most an
+	 *      extra election round, never a second master.
 	 *
 	 * A vote is electable iff it has non-zero priority OR carries the
 	 * ELECTABLE flag (the mixed-version semantics the comment describes).
@@ -224,9 +229,8 @@ __rep_cmp_vote(env, rep, eid, lsnp, priority, gen, data_gen, tiebreaker, flags)
 		/* 6: higher tiebreaker wins. */
 		better = (tiebreaker > rep->w_tiebreaker);
 	else
-		/* 7: higher eid wins -- the final, always-distinct tiebreak
-		 * that makes this a TOTAL order even if two sites drew equal
-		 * random tiebreakers, so every site agrees on the winner. */
+		/* 7: higher eid wins -- local, so it fixes the order on this
+		 * site only (see step 7 above). */
 		better = (eid > rep->winner);
 
 	if (better) {
