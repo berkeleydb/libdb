@@ -65,6 +65,10 @@ run ack-onepeer  harness_ackpolicy.c harness_one_peer  --unwind 6 --unwinding-as
 run ack-2site    harness_ackpolicy.c harness_twosite   --unwind 6 --unwinding-assertions  # H4 2-site cases
 run ack-shortcut harness_ackpolicy.c harness_shortcut  --unwind 6 --unwinding-assertions  # H4 send shortcuts
 run qam-recno    harness_qam_recno.c harness --conversion-check                # Q1 queue record arithmetic
+run logc-hdrchk  harness_logc_hdrchk.c harness                                 # L1 log header check
+run logc-hdrchk2 harness_logc_hdrchk.c harness -DL1_SET_MAXREC_SHRINK          # L1 w/ maxrec re-read that shrinks
+run env-alloc    harness_env_alloc_size.c harness --unwind 12 --unwinding-assertions  # E1 region size classes
+run env-alloc-d  harness_env_alloc_size.c harness -DE1_DIAGNOSTIC --unwind 12 --unwinding-assertions  # E1 DIAGNOSTIC size
 
 # okitem proves the safety guarantee on the real (parenthesised) HPAGE_PTYPE.
 # We drop --pointer-check here (keeping --bounds-check + __CPROVER_r_ok, the
@@ -118,6 +122,14 @@ sabotage b1-decompress harness_bt_decompress.c harness \
 # index-in-range bound and the (page,index)->recno round-trip.
 sabotage qam-recno-sab harness_qam_recno.c harness -DQAM_SABOTAGE \
 	--bounds-check --pointer-check --conversion-check
+# L1: `<` for `<=` in the record-size sanity check lets a body-less record
+# (len == size) pass -- property (1) then fails.
+sabotage logc-hdrchk-sab harness_logc_hdrchk.c harness -DL1_SABOTAGE \
+	--bounds-check --pointer-check
+# E1: `<` for `<=` in SET_QUEUE_FOR_SIZE sends a boundary-size chunk to the
+# next, larger queue -- the chosen class is no longer the smallest that fits.
+sabotage env-alloc-sab harness_env_alloc_size.c harness -DE1_SABOTAGE \
+	--bounds-check --pointer-check --unwind 12 --unwinding-assertions
 # H1: swapping LOG_COMPARE's order arms breaks winner-maximises-LSN (d).
 sabotage cmpvote-sab harness_cmpvote.c harness_likepri -DCMPVOTE_SABOTAGE \
 	--bounds-check --pointer-check
