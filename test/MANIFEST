@@ -528,6 +528,11 @@ db	run_mf_discard_order
 db	run_dd_stripes
 # SKIPs (passes) on a build without --enable-dtrace; see the script header.
 db	run_dtrace_probes
+# SKIPs on a build without --enable-compression.  Proves __bam_defdecompress
+# rejects a truncated compressed item instead of over-reading past its end (a
+# corrupt btree page from disk); the over-read faults on a PROT_NONE guard
+# page on any build.
+db	run_bt_decompress_bounds
 
 # ---------------------------------------------------------------------------
 # RFC 0014 typed tier.  sh test/db/run_all.sh with TIER=typed, from an
