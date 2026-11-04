@@ -53,6 +53,8 @@ run dd_find   harness_dd_find.c  harness  --unwind 6  --unwinding-assertions
 run cmpvote   harness_cmpvote.c  harness                                     # H1 (b,c): loop-free comparator
 run cmpvote-d harness_cmpvote.c  harness_likepri                            # H1 (d): same-data_gen lex order
 run tally     harness_tally.c    harness  --unwind 8  --unwinding-assertions  # H2 tally array
+run maj-arith harness_majority.c harness_arith     --conversion-check          # H3 quorum arithmetic
+run maj-inter harness_majority.c harness_intersect --unwind 9 --unwinding-assertions  # H3 intersection
 
 # okitem proves the safety guarantee on the real (parenthesised) HPAGE_PTYPE.
 # We drop --pointer-check here (keeping --bounds-check + __CPROVER_r_ok, the
@@ -97,6 +99,11 @@ sabotage cmpvote-sab harness_cmpvote.c harness_likepri -DCMPVOTE_SABOTAGE \
 # H2: == -> != on the "seen this eid" test double-counts a site (OOB + count).
 sabotage tally-sab harness_tally.c harness -DTALLY_SABOTAGE \
 	--bounds-check --pointer-check --unwind 8 --unwinding-assertions
+# H3: majority = n/2 (floor) instead of n/2+1 breaks intersection + warning.
+sabotage maj-arith-sab harness_majority.c harness_arith -DMAJORITY_SABOTAGE \
+	--bounds-check --pointer-check --conversion-check
+sabotage maj-inter-sab harness_majority.c harness_intersect -DMAJORITY_SABOTAGE \
+	--bounds-check --pointer-check --unwind 9 --unwinding-assertions
 
 # Every verbatim copy must still match src/.
 printf '=== %-14s ' "copies"
