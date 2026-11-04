@@ -7,8 +7,9 @@
 #
 # Runs on every PR and push, not on a paths filter: a harness covers code
 # wherever it lives in src/, and a filter that lists files silently skips a
-# change to a file someone forgot to add.  The whole suite takes under a
-# minute after the nix shell is warm.
+# change to a file someone forgot to add.  The whole suite takes a few minutes
+# after the nix shell is warm (the two btree-compression harnesses that run the
+# real varint codec dominate at ~2 min each; everything else is seconds).
 name: CBMC
 
 on:
