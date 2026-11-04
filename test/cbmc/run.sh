@@ -52,6 +52,7 @@ run getulong  harness_getlong.c  harness_ulong  --unwind 8
 run dd_find   harness_dd_find.c  harness  --unwind 6  --unwinding-assertions
 run cmpvote   harness_cmpvote.c  harness                                     # H1 (b,c): loop-free comparator
 run cmpvote-d harness_cmpvote.c  harness_likepri                            # H1 (d): same-data_gen lex order
+run tally     harness_tally.c    harness  --unwind 8  --unwinding-assertions  # H2 tally array
 
 # okitem proves the safety guarantee on the real (parenthesised) HPAGE_PTYPE.
 # We drop --pointer-check here (keeping --bounds-check + __CPROVER_r_ok, the
@@ -93,6 +94,9 @@ sabotage okitem-sab harness_okitem.c harness -DHPAGE_PTYPE_SABOTAGE \
 # H1: swapping LOG_COMPARE's order arms breaks winner-maximises-LSN (d).
 sabotage cmpvote-sab harness_cmpvote.c harness_likepri -DCMPVOTE_SABOTAGE \
 	--bounds-check --pointer-check
+# H2: == -> != on the "seen this eid" test double-counts a site (OOB + count).
+sabotage tally-sab harness_tally.c harness -DTALLY_SABOTAGE \
+	--bounds-check --pointer-check --unwind 8 --unwinding-assertions
 
 # Every verbatim copy must still match src/.
 printf '=== %-14s ' "copies"
