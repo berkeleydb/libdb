@@ -71,6 +71,7 @@ typedef uint64_t u_int64_t;
 typedef uint32_t db_pgno_t;
 
 #define EINVAL          22
+#define UINT32_MAX      4294967295U
 #define DB_BUFFER_SMALL (-30999)
 
 /* CMP_INT_SPARE_VAL: db_int.h value (the duplicate-value magic byte). */
@@ -88,6 +89,8 @@ typedef struct __db_dbt {
 } DBT;
 
 typedef struct __db { int unused; } DB;
+
+u_int32_t nondet_u32(void);
 
 /*
  * Varint read-footprint models.  See the header comment: these read EXACTLY
@@ -129,23 +132,27 @@ static int __db_decompress_int32(const u_int8_t *buf, u_int32_t *i)
 {
 	u_int32_t w = varint_width(buf);
 	u_int32_t k;
-	u_int32_t acc = 0;
+	u_int8_t sink = 0;
 	/* The real int32 decoder reads the leading `w` bytes of buf. */
 	for (k = 0; k < w; k++)
-		acc = (acc << 1) ^ buf[k];
-	*i = acc;
+		sink ^= buf[k];
+	(void)sink;
+	/*
+	 * The decoded VALUE is any u32: a 5-byte varint reaches UINT32_MAX,
+	 * and the bytes come from disk.  An earlier model returned a value
+	 * built from the bytes read, which never exceeded ~2^17, so the proof
+	 * could not see prefix + suffix wrap.
+	 */
+	*i = nondet_u32();
 	return ((int)w);
 }
 
 /* ------------------------------------------------------------------------ */
 #ifdef B1_FIXED
 /*
- * The proposed fix: check that the varint's declared width fits BEFORE
- * reading its bytes, and that there is at least one byte before reading *s.
- * This mirrors fix/bt-decompress-bounds.  __db_decompress_count_int reads
- * s[0] (one byte), so a safe pre-check is "the next byte index (size) is
- * still < compressed->size" before each count_int, and compressed->size >= 1
- * before *s.
+ * The fix on fix/bt-decompress-bounds (2e99a1f84 + e067d6507), copied
+ * verbatim.  When it lands on master, drop this arm: the BEGIN/END copy
+ * below becomes the fixed code and check_copies.sh guards it.
  */
 static int
 b1_fixed_defdecompress(dbp, prevKey, prevData, compressed, destKey, destData)
@@ -158,17 +165,25 @@ b1_fixed_defdecompress(dbp, prevKey, prevData, compressed, destKey, destData)
 
 	COMPQUIET(dbp, NULL);
 
-	/* Need at least the magic/first byte. */
+	/*
+	 * Check for the magic identifying byte, that tells us that this is a
+	 * compressed duplicate value.
+	 *
+	 * A compressed item comes from a btree page, i.e. from disk, so it is a
+	 * trust boundary: a corrupt or truncated item must be rejected, not
+	 * over-read.  Each __db_decompress_count_int/_int32 below dereferences
+	 * the byte at the current offset, so that offset must be proven < the
+	 * compressed buffer BEFORE the read -- otherwise a short item over-reads
+	 * its lookahead byte (and *s over-reads a zero-length item).
+	 */
 	if (compressed->size < 1)
 		return (EINVAL);
-
 	s = (u_int8_t*)compressed->data;
 	if (*s == CMP_INT_SPARE_VAL) {
 		++s;
 		size = 1;
 
-		/* Before reading the count byte at offset `size`, it must be
-		 * on-buffer. */
+		/* Unmarshal prefix and suffix */
 		if (size >= compressed->size)
 			return (EINVAL);
 		size += __db_decompress_count_int(s);
@@ -183,31 +198,49 @@ b1_fixed_defdecompress(dbp, prevKey, prevData, compressed, destKey, destData)
 			return (EINVAL);
 		s += __db_decompress_int32(s, &suffix);
 
+		/*
+		 * prefix and suffix are from disk too: bound them before any
+		 * sum, or prefix + suffix and size + suffix wrap and the copies
+		 * below run with a huge length.
+		 */
+	#ifndef B1_NO_WRAP_CHECK
+	if (prefix > prevData->size ||
+		    suffix > compressed->size - size ||
+		    suffix > UINT32_MAX - prefix)
+			return (EINVAL);
+#endif
+
+		/* Check destination lengths */
 		destKey->size = prevKey->size;
 		destData->size = prefix + suffix;
 		if (destKey->size > destKey->ulen ||
 			destData->size > destData->ulen)
 			return (DB_BUFFER_SMALL);
 
+		/* Write the key */
 		memcpy(destKey->data, prevKey->data, destKey->size);
 
+		/* Write the prefix */
 		if (prefix > prevData->size)
 			return (EINVAL);
 		d = (u_int8_t*)destData->data;
 		memcpy(d, prevData->data, prefix);
 		d += prefix;
 
+		/* Write the suffix */
 		size += suffix;
 		if (size > compressed->size)
 			return (EINVAL);
 		memcpy(d, s, suffix);
 		s += suffix;
 
+		/* Return bytes read */
 		compressed->size = (u_int32_t)(s - (u_int8_t*)compressed->data);
 		return (0);
 	}
 
-	/* s[0] is covered by the compressed->size >= 1 check at the top. */
+	/* Unmarshal prefix, suffix and data length (s[0] is covered by the
+	 * compressed->size >= 1 check above). */
 	size = __db_decompress_count_int(s);
 	if (size > compressed->size)
 		return (EINVAL);
@@ -227,28 +260,42 @@ b1_fixed_defdecompress(dbp, prevKey, prevData, compressed, destKey, destData)
 		return (EINVAL);
 	s += __db_decompress_int32(s, &destData->size);
 
+	/* As above: bound the on-disk lengths before any sum can wrap. */
+#ifndef B1_NO_WRAP_CHECK
+	if (prefix > prevKey->size ||
+	    suffix > compressed->size - size ||
+	    suffix > UINT32_MAX - prefix ||
+	    destData->size > compressed->size - size - suffix)
+		return (EINVAL);
+#endif
+
+	/* Check destination lengths */
 	destKey->size = prefix + suffix;
 	if (destKey->size > destKey->ulen || destData->size > destData->ulen)
 		return (DB_BUFFER_SMALL);
 
+	/* Write the prefix */
 	if (prefix > prevKey->size)
 		return (EINVAL);
 	d = (u_int8_t*)destKey->data;
 	memcpy(d, prevKey->data, prefix);
 	d += prefix;
 
+	/* Write the suffix */
 	size += suffix;
 	if (size > compressed->size)
 		return (EINVAL);
 	memcpy(d, s, suffix);
 	s += suffix;
 
+	/* Write the data */
 	size += destData->size;
 	if (size > compressed->size)
 		return (EINVAL);
 	memcpy(destData->data, s, destData->size);
 	s += destData->size;
 
+	/* Return bytes read */
 	compressed->size = (u_int32_t)(s - (u_int8_t*)compressed->data);
 	return (0);
 }
@@ -367,7 +414,6 @@ __bam_defdecompress(dbp, prevKey, prevData, compressed, destKey, destData)
 #define PREVMAX 8
 #define DESTMAX 16
 
-u_int32_t nondet_u32(void);
 
 /*
  * Allocate a buffer of EXACTLY `n` bytes.  CBMC's malloc gives a fresh object

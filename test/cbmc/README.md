@@ -232,12 +232,35 @@ at the second varint. CBMC reports two genuine failures on the real code:
 `__bam_defdecompress … *s: pointer outside object bounds` and
 `varint … buf[0]: pointer outside object bounds`.
 
+### A second hole: the decoded lengths wrap
+
+The first version of this harness modelled `__db_decompress_int32` as
+returning a value built from the bytes it read, which never exceeded about
+2^17. That hid a worse bug. The decoded prefix, suffix and data length come
+from disk and can be any u32. With prefix 4 and suffix `0xFFFFFFFE`,
+`prefix + suffix` wraps to 2, `size += suffix` wraps back under
+`compressed->size`, every check passes, and `memcpy` copies about 4 GB. This
+happens on both paths. The model now returns `nondet_u32()`, and the first fix
+alone fails the proof (`b1-wrap` arm).
+
+`__bamc_start_decompress`, the caller that decodes each item's first record,
+had the same hole one level up: it copied the decoded length out of the page
+unchecked. `test/db/bt_decompress_bounds.c` case E corrupts one length byte in
+a real compressed database and crashes a plain `DB->get` on master.
+
 ### The fix (on `fix/bt-decompress-bounds`, built here as `-DB1_FIXED`)
 
-Check that the next byte index is still inside `compressed->size` **before**
-every `__db_decompress_count_int`, and that `compressed->size >= 1` before the
-magic `*s`. `harness_bt_decompress.c -DB1_FIXED` builds this variant and
-VERIFIES (no over-read, no over-write) over the whole input space.
+1. Check that the next byte index is still inside `compressed->size` **before**
+   every `__db_decompress_count_int`, and that `compressed->size >= 1` before
+   the magic `*s` (`2e99a1f84`).
+2. Bound prefix against the previous key or data, suffix and the data length
+   against what is left of the item, and `prefix + suffix` against
+   `UINT32_MAX`, before any sum. Check the first record's length in
+   `__bamc_start_decompress` (`e067d6507`).
+
+`-DB1_FIXED` builds a verbatim copy of the fixed function and VERIFIES (no
+over-read, no over-write) over the whole bounded input space.
+`-DB1_FIXED -DB1_NO_WRAP_CHECK` drops step 2 and must FAIL.
 
 ### How this harness runs
 

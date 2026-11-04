@@ -119,6 +119,10 @@ sabotage okitem-sab harness_okitem.c harness -DHPAGE_PTYPE_SABOTAGE \
 # drop -DB1_FIXED.  See README.md "BUG FOUND".
 sabotage b1-decompress harness_bt_decompress.c harness \
 	--bounds-check --pointer-check --unwind 10
+# B1b: the first fix alone (varint reads bounded, decoded lengths not) must
+# also fail: prefix + suffix wraps.  Catches a revert of e067d6507.
+sabotage b1-wrap harness_bt_decompress.c harness -DB1_FIXED -DB1_NO_WRAP_CHECK \
+	--bounds-check --pointer-check --unwind 10
 # Q1: dropping the 1-based "- 1" in QAM_RECNO_INDEX (an off-by-one) breaks the
 # index-in-range bound and the (page,index)->recno round-trip.
 sabotage qam-recno-sab harness_qam_recno.c harness -DQAM_SABOTAGE \
