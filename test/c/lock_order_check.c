@@ -51,7 +51,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "db.h"
+#include "db_config.h"
+#include "db_int.h"
+#include "dbinc/mp.h"
 
 #define	HOME_PREFIX	"LOCK_ORDER_CHECK"
 #define	NSEED		400
@@ -61,6 +63,7 @@
  * a PASS into a spurious "HUNG".
  */
 #define	SUBJECT_TIMEOUT	60
+
 
 static int
 ck(int ret, const char *what, int line)
@@ -158,6 +161,60 @@ workload(u_int32_t nparts)
 	CK(env->close(env, 0));
 }
 
+/*
+ * TWO-ENV arm.  A mutex index is relative to one environment's mutex region,
+ * so two environments created the same way hand out the same indices.  The
+ * checker used to compare indices across environments, so a thread holding a
+ * latch in one environment and taking the same-numbered latch in another was
+ * reported as a self-deadlock and the environment panicked.  The TCL
+ * replication harness hits this on every election under --enable-diagnostic:
+ * __rep_update_setup holds the rep region latch while the send callback puts
+ * the message into a queue database in a second environment.
+ *
+ * Reproduce it directly: hold env A's mpool region latch, take env B's.  They
+ * are different latches with the same index.
+ */
+static DB_ENV *
+two_env_open(const char *tag)
+{
+	DB_ENV *dbenv;
+	char cmd[512], home[256];
+
+	(void)snprintf(home, sizeof(home), "%s_2ENV_%s_%lu",
+	    HOME_PREFIX, tag, (unsigned long)getpid());
+	(void)snprintf(cmd, sizeof(cmd), "mkdir -p %s", home);
+	if (system(cmd) != 0)
+		exit(3);
+	CK(db_env_create(&dbenv, 0));
+	CK(dbenv->open(dbenv, home, DB_CREATE | DB_INIT_LOCK | DB_INIT_LOG |
+	    DB_INIT_MPOOL | DB_INIT_TXN, 0));
+	return (dbenv);
+}
+
+static void
+two_env(void)
+{
+	DB_ENV *a, *b;
+	db_mutex_t ma, mb;
+
+	a = two_env_open("A");
+	b = two_env_open("B");
+	ma = ((DB_MPOOL *)a->env->mp_handle)->reginfo[0].mtx_alloc;
+	mb = ((DB_MPOOL *)b->env->mp_handle)->reginfo[0].mtx_alloc;
+	if (ma != mb) {
+		/* The arm has no teeth unless the indices collide. */
+		printf("two-env: mpool latch indices differ (%lu, %lu)\n",
+		    (unsigned long)ma, (unsigned long)mb);
+		exit(4);
+	}
+	MUTEX_LOCK(a->env, ma);
+	MUTEX_LOCK(b->env, mb);
+	MUTEX_UNLOCK(b->env, mb);
+	MUTEX_UNLOCK(a->env, ma);
+	CK(b->close(b, 0));
+	CK(a->close(a, 0));
+}
+
 int
 main(int argc, char **argv)
 {
@@ -169,7 +226,10 @@ main(int argc, char **argv)
 	 * the partition count.
 	 */
 	if (argc == 3 && strcmp(argv[1], "--arm") == 0) {
-		workload((u_int32_t)atoi(argv[2]));
+		if (strcmp(argv[2], "2env") == 0)
+			two_env();
+		else
+			workload((u_int32_t)atoi(argv[2]));
 		printf("ARM_COMPLETED\n");
 		return (0);
 	}
@@ -263,6 +323,21 @@ main(int argc, char **argv)
 		printf("FAIL: lk_partitions=1 ended unexpectedly "
 		    "(status 0x%x); a hang here means the checker did not "
 		    "validate before acquiring\n", status);
+		fails++;
+	}
+
+	/* ---- TWO-ENV: latches in different environments never conflict. */
+	if ((pid = fork()) == 0) {
+		execl(argv[0], argv[0], "--arm", "2env", (char *)NULL);
+		_exit(127);
+	}
+	(void)waitpid(pid, &status, 0);
+	if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+		printf("PASS (two-env): latches with the same index in two "
+		    "environments were not reported\n");
+	else {
+		printf("FAIL (two-env): status 0x%x -- the checker compared "
+		    "mutex indices across environments\n", status);
 		fails++;
 	}
 
