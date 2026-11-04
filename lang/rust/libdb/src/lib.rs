@@ -117,10 +117,11 @@ impl std::fmt::Display for Error {
         match self {
             Error::Deadlock => write!(f, "deadlock (retry the transaction)"),
             Error::LockNotGranted => write!(f, "lock not granted"),
-            Error::SnapshotConflict =>
-                write!(f, "snapshot conflict: SSI aborted the pivot (retry the transaction)"),
-            Error::SnapshotUnsafe =>
-                write!(f, "snapshot unsafe (retry the transaction)"),
+            Error::SnapshotConflict => write!(
+                f,
+                "snapshot conflict: SSI aborted the pivot (retry the transaction)"
+            ),
+            Error::SnapshotUnsafe => write!(f, "snapshot unsafe (retry the transaction)"),
             Error::RunRecovery => write!(f, "panic: run recovery"),
             Error::SecondaryBad => write!(f, "secondary index corrupt"),
             Error::Db(c, m) | Error::Os(c, m) => write!(f, "{m} ({c})"),
@@ -500,8 +501,10 @@ impl Env {
                 }
             };
             match outcome {
-                Err(Error::Deadlock) | Err(Error::LockNotGranted)
-                | Err(Error::SnapshotConflict) | Err(Error::SnapshotUnsafe) => {
+                Err(Error::Deadlock)
+                | Err(Error::LockNotGranted)
+                | Err(Error::SnapshotConflict)
+                | Err(Error::SnapshotUnsafe) => {
                     if attempt >= retries {
                         return outcome;
                     }
