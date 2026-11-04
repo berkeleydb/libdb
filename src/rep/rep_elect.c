@@ -1106,63 +1106,67 @@ __rep_cmp_vote(env, rep, eid, lsnp, priority, gen, data_gen, tiebreaker, flags)
 	u_int32_t priority;
 	u_int32_t data_gen, flags, gen, tiebreaker;
 {
-	int cmp, like_pri;
+	int better, cmp, electable;
 
 	cmp = LOG_COMPARE(lsnp, &rep->w_lsn);
-	/*
-	 * If we've seen more than one, compare us to the best so far.
-	 * If we're the first, make ourselves the winner to start.
-	 */
-	if (rep->sites > 1 &&
-	    (priority != 0 || LF_ISSET(REPCTL_ELECTABLE))) {
-		/*
-		 * Special case, if we have a mixed version group of sites,
-		 * we set priority to 0, but set the ELECTABLE flag so that
-		 * all sites talking at lower versions can correctly elect.
-		 * If a non-zero priority comes in and current winner is
-		 * zero priority (but was electable), then the non-zero
-		 * site takes precedence no matter what its LSN is.
-		 *
-		 * Then the data_gen determines the winner.  The site with
-		 * the more recent generation of data wins.
-		 *
-		 * Then LSN is determinant only if we're comparing
-		 * like-styled version/priorities at the same data_gen.  I.e.
-		 * both with 0/ELECTABLE priority or both with non-zero
-		 * priority.  Then actual priority value if LSNs
-		 * are equal, then tiebreaker if both are equal.
-		 */
-		/*
-		 * Make note if we're comparing the same types of priorities
-		 * that indicate electability or not.  We know we are
-		 * electable if we are here.
-		 */
-		like_pri = (priority == 0 && rep->w_priority == 0) ||
-		    (priority != 0 && rep->w_priority != 0);
 
-		if ((priority != 0 && rep->w_priority == 0) ||
-		    (like_pri && data_gen > rep->w_datagen) ||
-		    (like_pri && data_gen == rep->w_datagen && cmp > 0) ||
-		    (cmp == 0 && (priority > rep->w_priority ||
-		    (priority == rep->w_priority &&
-		    (tiebreaker > rep->w_tiebreaker))))) {
-			RPRINT(env, (env, DB_VERB_REP_ELECT,
-			    "Accepting new vote"));
+	/*
+	 * Choose the election winner by a single TOTAL ORDER, so that every
+	 * site that tallies the same set of votes picks the same winner no
+	 * matter what order the votes arrived in.  The previous code (1) made
+	 * the first vote the winner outright and (2) let its last arm (equal
+	 * LSN => higher priority / tiebreaker) fire REGARDLESS of data_gen, so
+	 * a vote with an OLDER data_gen but an equal LSN and a higher priority
+	 * or tiebreaker could beat a vote with a NEWER data_gen.  Both make the
+	 * result order-dependent; (2) can elect a site with older data and roll
+	 * back a commit the newer site already had -- a durability bug, not
+	 * just a failure to settle.  The order below is the lexicographic one
+	 * the comment has always claimed, now applied uniformly:
+	 *
+	 *   1. electable beats not-electable;
+	 *   2. non-zero priority beats zero priority (mixed-version case: an
+	 *      old site sets priority 0 but ELECTABLE so it can still vote,
+	 *      yet a current-version non-zero-priority site should win);
+	 *   3. higher data_gen (more recent generation of data) wins;
+	 *   4. higher LSN wins;
+	 *   5. higher priority value wins;
+	 *   6. higher tiebreaker wins;
+	 *   7. higher eid wins -- the final discriminator, so the order is
+	 *      TOTAL on this site even if two votes tie on everything above.
+	 *      eids are local (repmgr numbers sites in the order it learns of
+	 *      them; base API eids are the application's), so this step makes
+	 *      each site independent of arrival order but does not make
+	 *      different sites agree.  The random 32-bit tiebreaker does that,
+	 *      except on an exact collision; a collision costs at most an
+	 *      extra election round, never a second master.
+	 *
+	 * A vote is electable iff it has non-zero priority OR carries the
+	 * ELECTABLE flag (the mixed-version semantics the comment describes).
+	 * rep->sites is the arrival position of this vote (__rep_tally does
+	 * (*countp)++ before calling us), so sites==1 is the first vote of this
+	 * election; it is compared against an empty winner the same way as the
+	 * rest, so there is no first-vote special case to make the choice
+	 * order-dependent.  (rep->winner is NOT reset between elections, so we
+	 * key the "empty winner" test off sites==1, not off rep->winner.)  A
+	 * non-electable vote never becomes the winner, so whenever there is a
+	 * running winner (sites>1) it is electable.
+	 */
+	electable = (priority != 0 || LF_ISSET(REPCTL_ELECTABLE));
+
+	if (rep->sites == 1) {
+		/*
+		 * First vote: an electable vote becomes the winner; a
+		 * non-electable one leaves the winner empty.  We must set the
+		 * winner fields explicitly (they are stale from a prior
+		 * election), so handle this case directly rather than via the
+		 * "better" comparison below.
+		 */
+		if (electable) {
 			rep->winner = eid;
 			rep->w_priority = priority;
 			rep->w_lsn = *lsnp;
 			rep->w_gen = gen;
 			rep->w_datagen = data_gen;
-			rep->w_tiebreaker = tiebreaker;
-		}
-	} else if (rep->sites == 1) {
-		if (priority != 0 || LF_ISSET(REPCTL_ELECTABLE)) {
-			/* Make ourselves the winner to start. */
-			rep->winner = eid;
-			rep->w_priority = priority;
-			rep->w_gen = gen;
-			rep->w_datagen = data_gen;
-			rep->w_lsn = *lsnp;
 			rep->w_tiebreaker = tiebreaker;
 		} else {
 			rep->winner = DB_EID_INVALID;
@@ -1172,6 +1176,47 @@ __rep_cmp_vote(env, rep, eid, lsnp, priority, gen, data_gen, tiebreaker, flags)
 			ZERO_LSN(rep->w_lsn);
 			rep->w_tiebreaker = 0;
 		}
+		return;
+	}
+
+	/*
+	 * sites>1: compare this vote against the running (electable) winner by
+	 * the total order.  A non-electable vote never displaces the winner.
+	 */
+	if (!electable)
+		better = 0;
+	else if (rep->winner == DB_EID_INVALID)
+		/* Winner slot is empty (every earlier vote was non-electable):
+		 * any electable vote takes it. */
+		better = 1;
+	else if ((priority != 0) != (rep->w_priority != 0))
+		/* 2: non-zero priority beats zero priority. */
+		better = (priority != 0 && rep->w_priority == 0);
+	else if (data_gen != rep->w_datagen)
+		/* 3: higher data_gen wins. */
+		better = (data_gen > rep->w_datagen);
+	else if (cmp != 0)
+		/* 4: higher LSN wins. */
+		better = (cmp > 0);
+	else if (priority != rep->w_priority)
+		/* 5: higher priority value wins. */
+		better = (priority > rep->w_priority);
+	else if (tiebreaker != rep->w_tiebreaker)
+		/* 6: higher tiebreaker wins. */
+		better = (tiebreaker > rep->w_tiebreaker);
+	else
+		/* 7: higher eid wins -- local, so it fixes the order on this
+		 * site only (see step 7 above). */
+		better = (eid > rep->winner);
+
+	if (better) {
+		RPRINT(env, (env, DB_VERB_REP_ELECT, "Accepting new vote"));
+		rep->winner = eid;
+		rep->w_priority = priority;
+		rep->w_lsn = *lsnp;
+		rep->w_gen = gen;
+		rep->w_datagen = data_gen;
+		rep->w_tiebreaker = tiebreaker;
 	}
 }
 
