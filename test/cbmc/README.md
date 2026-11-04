@@ -55,6 +55,7 @@ isolate one assertion).
 | `harness_hash4.c`    | `hash/hash_func.c` `__ham_func4` (the `__db_chksum` plain-hash core) | reads exactly `len` key bytes (no OOB); deterministic; `len==0 ⇒ 0` | key ≤ 8 bytes, `--unwind 9` | ~15 s | SUCCESSFUL |
 | `harness_getlong.c`  | `common/db_getlong.c` `__db_getlong` / `__db_getulong` | success ⇒ result in `[min,max]`; ulong `max==0` = "no upper bound"; no OOB on the parse | string ≤ 6 chars, `--unwind 8` | ~1 s | SUCCESSFUL |
 | `harness_dd_find.c`  | `lock/lock_deadlock.c` `__dd_find` (waits-for bitmap cycle detection) | no OOB on the `nlockers×nalloc` bitmap matrix or deadlist; termination; deadlist entries point into the matrix and are NULL-terminated | 4 lockers, `--unwind 6` + `--unwinding-assertions` | <1 s | SUCCESSFUL |
+| `harness_cmpvote.c`  | `rep/rep_elect.c` `__rep_cmp_vote` (election winner comparator) | **(b)** a priority-0 non-`REPCTL_ELECTABLE` vote never wins; **(c)** if any non-zero-priority vote is present the winner has non-zero priority; **(d)** among like-priority votes at the **same data_gen**, the winner maximises (LSN, priority, tiebreaker) and is order-independent. `-DCMPVOTE_SABOTAGE` swaps `LOG_COMPARE`'s order arms and must FAIL (d) | 3 votes, all fields nondet (loop-free) | ~2 s | SUCCESSFUL. **(a) order independence does NOT hold — see FINDING below** |
 | `harness_okitem.c`   | `db/db_ret.c` `__db_ret_okitem` (the #67 guard) | **safety guarantee**: if okitem returns 0 ("safe"), the exact downstream `__db_ret`/`__db_retcopy` read stays on-page (`__CPROVER_r_ok`) | page ≤ 64 bytes (loop-free) | ~1 s | SUCCESSFUL. Found a real bug (below), fixed in `2ca81268a`; `-DHPAGE_PTYPE_SABOTAGE` restores the bug and must FAIL |
 
 `run.sh` runs `okitem` twice: on the real engine macro (→ `VERIFICATION
@@ -82,6 +83,100 @@ counterexample:
 * **okitem** — the real engine macro already yields a genuine counterexample
   (the bug below); the `-DHPAGE_PTYPE_FIXED` build then verifies, so the
   property distinguishes correct from incorrect code.
+
+## FINDING (not a safety bug) — `__rep_cmp_vote` is order-dependent, and is not the lexicographic order its comment claims
+
+`harness_cmpvote.c` property **(a)** (order independence) FAILS on the real,
+unmodified `__rep_cmp_vote` (src/rep/rep_elect.c:1101). Two sites that tally
+the **same** set of VOTE1 messages in different arrival orders can pick
+**different** phase-1 winners. CBMC gives two independent counterexamples.
+
+### Counterexample 1 — the first-vote special case (all-tied mixed-version set)
+
+Three votes, all fields zero except:
+
+```
+vote 0: priority=0, flags=0                 (not electable)
+vote 1: priority=0, flags=0                 (not electable)
+vote 2: priority=0, flags=REPCTL_ELECTABLE  (electable, mixed-version site)
+```
+
+`__rep_cmp_vote` treats the FIRST tallied vote specially: when `rep->sites==1`
+it makes an electable vote the winner outright. When `rep->sites>1` it runs the
+comparison arms, and for this all-tied set (`data_gen==w_datagen==0`,
+`cmp==LOG_COMPARE(0,0)==0`, `priority==w_priority==0`,
+`tiebreaker==w_tiebreaker==0`) **none** of the four arms fire. So:
+
+* orders where vote 2 arrives first (`{2,0,1}`, `{2,1,0}`) → **winner = 2**;
+* every other order → **winner stays `DB_EID_INVALID`**.
+
+This is the exact "mixed version group ... priority 0 but ELECTABLE" case the
+source comment describes, and it is order-dependent.
+
+### Counterexample 2 — the last arm bypasses data_gen
+
+The replace-the-winner condition is:
+
+```c
+(priority != 0 && w_priority == 0) ||                         /* A */
+(like_pri && data_gen > w_datagen) ||                         /* B */
+(like_pri && data_gen == w_datagen && cmp > 0) ||             /* C */
+(cmp == 0 && (priority > w_priority ||                        /* D */
+    (priority == w_priority && tiebreaker > w_tiebreaker)))
+```
+
+Arm **D** fires whenever the LSNs are equal (`cmp == 0`), **regardless of
+data_gen**. So a vote with a *lower* data_gen but an equal LSN and a higher
+tiebreaker beats a vote with a *higher* data_gen (which arm B had made the
+winner). Example (all electable, all same priority, same LSN):
+
+```
+vote 0: data_gen=0x80000004, tiebreaker=0   (seen first, becomes winner)
+vote 1: data_gen=0xFFFFFFFF, tiebreaker=0   (higher data_gen, arm B => winner)
+vote 2: data_gen=0x80000005, tiebreaker=1   (lower data_gen, equal LSN,
+                                             higher tiebreaker, arm D => winner)
+```
+
+Final winner = vote 2, whose data_gen (`0x80000005`) is **lower** than vote 1's
+(`0xFFFFFFFF`). The comparator is therefore **not** the total order
+"data_gen, then LSN, then priority, then tiebreaker" that the function's
+comment claims; it is not even a consistent order (the relation is not
+transitive), which is the root reason (a) fails. The harness proves (d) only in
+the sub-domain where all data_gens are equal, where the comparator does reduce
+to a clean `(LSN, priority, tiebreaker)` order and IS order-independent.
+
+### Why this is NOT a safety bug (no two masters)
+
+A diverging phase-1 winner cannot elect two masters, because of the **VOTE2**
+phase. After phase 1 (`IS_PHASE1_DONE`: enough VOTE1s heard and a winner
+chosen), each site sends a single VOTE2 for *its own* `rep->winner`. A site
+becomes master only through `I_HAVE_WON` (rep_elect.c:26):
+
+```c
+#define I_HAVE_WON(rep, winner) \
+    ((rep)->votes >= (rep)->nvotes && winner == (rep)->eid)
+```
+
+so a candidate is elected only when a **majority** (`nvotes`) of sites
+independently chose it as their phase-1 winner and voted VOTE2 for it. Two
+distinct candidates cannot each collect a majority of the same group (that is
+exactly what H3 proves: any two majorities intersect). Order dependence can at
+worst make an election **fail to settle** in a round (no candidate reaches a
+majority of VOTE2s), which retries at the next egen — a liveness cost in a rare
+all-tied case, not a split brain.
+
+### Disposition
+
+No engine change on `test/cbmc-expand` (per the workstream rules). This is a
+real correctness-of-comment / order-consistency defect with a liveness, not
+safety, impact. A follow-up could either (1) make the comparator a genuine
+total order (gate arm D on `data_gen == w_datagen`, and give the first vote the
+same comparison path as the rest) and add a TCL rep regression that drives an
+all-tied mixed-version set, or (2) correct the comment to describe the actual
+order. `lts/2026.10.7` has the identical `__rep_cmp_vote` (checked below), so a
+fix would warrant an LTS backport. Flagged to the lead; left as a documented
+finding here because it does not threaten the one-master-per-generation
+invariant.
 
 ## BUG FOUND (fixed in `2ca81268a`) — `__db_ret_okitem` hash-offpage guard read the wrong byte
 
