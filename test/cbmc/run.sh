@@ -55,6 +55,11 @@ run cmpvote-d harness_cmpvote.c  harness_likepri                            # H1
 run tally     harness_tally.c    harness  --unwind 8  --unwinding-assertions  # H2 tally array
 run maj-arith harness_majority.c harness_arith     --conversion-check          # H3 quorum arithmetic
 run maj-inter harness_majority.c harness_intersect --unwind 9 --unwinding-assertions  # H3 intersection
+run ack-quorum   harness_ackpolicy.c harness_quorum    --unwind 6 --unwinding-assertions  # H4 QUORUM contract
+run ack-allpeers harness_ackpolicy.c harness_all_peers --unwind 6 --unwinding-assertions  # H4 ALL_PEERS
+run ack-onepeer  harness_ackpolicy.c harness_one_peer  --unwind 6 --unwinding-assertions  # H4 ONE_PEER
+run ack-2site    harness_ackpolicy.c harness_twosite   --unwind 6 --unwinding-assertions  # H4 2-site cases
+run ack-shortcut harness_ackpolicy.c harness_shortcut  --unwind 6 --unwinding-assertions  # H4 send shortcuts
 
 # okitem proves the safety guarantee on the real (parenthesised) HPAGE_PTYPE.
 # We drop --pointer-check here (keeping --bounds-check + __CPROVER_r_ok, the
@@ -104,6 +109,11 @@ sabotage maj-arith-sab harness_majority.c harness_arith -DMAJORITY_SABOTAGE \
 	--bounds-check --pointer-check --conversion-check
 sabotage maj-inter-sab harness_majority.c harness_intersect -DMAJORITY_SABOTAGE \
 	--bounds-check --pointer-check --unwind 9 --unwinding-assertions
+# H4: counting non-electable acks as peers over-reports QUORUM durability.
+sabotage ack-quorum-sab harness_ackpolicy.c harness_quorum -DACKPOLICY_SABOTAGE \
+	--bounds-check --pointer-check --unwind 6 --unwinding-assertions
+sabotage ack-onepeer-sab harness_ackpolicy.c harness_one_peer -DACKPOLICY_SABOTAGE \
+	--bounds-check --pointer-check --unwind 6 --unwinding-assertions
 
 # Every verbatim copy must still match src/.
 printf '=== %-14s ' "copies"
