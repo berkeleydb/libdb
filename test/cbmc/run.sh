@@ -21,6 +21,10 @@ CBMC=${CBMC:-cbmc}
 # to bytes (e.g. (u_int8_t)nondet_u32()) to fill buffers, which is not a
 # property under test.  The varint harness enables it explicitly (see below).
 COMMON="--bounds-check --pointer-check"
+# cadical is CBMC's fast built-in SAT backend.  The decompress harness (B1) is
+# far too slow on the default solver; the rest verify at least as fast on
+# cadical, so the whole suite uses it.
+SOLVER="--sat-solver cadical"
 FAIL=0
 
 # run <name> <file> <function> <extra cbmc args...>
@@ -30,7 +34,7 @@ run() {
 	local rc secs tmp
 	tmp=$(mktemp)
 	SECONDS=0
-	"$CBMC" "$file" -Istubs --function "$func" $COMMON "$@" >"$tmp" 2>&1
+	"$CBMC" "$file" -Istubs --function "$func" $COMMON $SOLVER "$@" >"$tmp" 2>&1
 	rc=$?
 	secs=$SECONDS
 	if grep -q "VERIFICATION SUCCESSFUL" "$tmp"; then
@@ -70,7 +74,7 @@ printf '=== %-14s ' "okitem"
 SECONDS=0
 tmp=$(mktemp)
 "$CBMC" harness_okitem.c -Istubs --function harness \
-	--bounds-check --no-pointer-check --unwind 65 >"$tmp" 2>&1
+	--bounds-check --no-pointer-check $SOLVER --unwind 65 >"$tmp" 2>&1
 secs=$SECONDS
 if grep -q "VERIFICATION SUCCESSFUL" "$tmp"; then
 	printf 'PASS  (%ss)\n' "$secs"
@@ -79,6 +83,9 @@ else
 fi
 rm -f "$tmp"
 
+# B1 decompress: the FIXED variant verifies (no over-read / over-write).
+run b1-fixed   harness_bt_decompress.c harness -DB1_FIXED --unwind 10
+
 # Sabotage arms: each plants a real bug shape and MUST fail.  A sabotage arm
 # that verifies means its harness has no teeth.
 # sabotage <name> <file> <function> <cbmc args...>
@@ -86,7 +93,7 @@ sabotage() {
 	local name=$1 file=$2 func=$3; shift 3
 	printf '=== %-14s ' "$name"
 	local tmp; tmp=$(mktemp); SECONDS=0
-	"$CBMC" "$file" -Istubs --function "$func" "$@" >"$tmp" 2>&1
+	"$CBMC" "$file" -Istubs --function "$func" $SOLVER "$@" >"$tmp" 2>&1
 	if grep -q "VERIFICATION FAILED" "$tmp"; then
 		printf 'FAIL as required (%ss)\n' "$SECONDS"
 	else
@@ -98,6 +105,14 @@ sabotage() {
 # The pre-2ca81268a HPAGE_PTYPE (no parentheses): the real bug okitem found.
 sabotage okitem-sab harness_okitem.c harness -DHPAGE_PTYPE_SABOTAGE \
 	--bounds-check --no-pointer-check --unwind 65
+# B1: the REAL __bam_defdecompress over-reads the compressed buffer -- it reads
+# each varint's leading byte, and the magic byte at offset 0, BEFORE checking
+# the buffer is long enough.  This arm runs the UNMODIFIED engine code and MUST
+# FAIL (the live bug); fix/bt-decompress-bounds carries the fix + a failing-
+# first test/db runner.  When that fix lands, flip this to a normal `run` and
+# drop -DB1_FIXED.  See README.md "BUG FOUND".
+sabotage b1-decompress harness_bt_decompress.c harness \
+	--bounds-check --pointer-check --unwind 10
 # H1: swapping LOG_COMPARE's order arms breaks winner-maximises-LSN (d).
 sabotage cmpvote-sab harness_cmpvote.c harness_likepri -DCMPVOTE_SABOTAGE \
 	--bounds-check --pointer-check

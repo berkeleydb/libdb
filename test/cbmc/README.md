@@ -60,6 +60,7 @@ isolate one assertion).
 | `harness_majority.c` | `rep/rep_elect.c` `ELECTION_MAJORITY` (rep.h:534) + the `ack <= nsites/2` sub-majority warning in `__rep_elect_int` | **(1)** `2*majority > nsites` so any two majorities intersect (also proved constructively: two majorities of N=8 share a member); **(2)** the warning test `ack <= nsites/2` is exactly `ack < ELECTION_MAJORITY(nsites)`. `-DMAJORITY_SABOTAGE` uses `n/2` (floor) and must FAIL both | nsites 1–64, ack 0–64, constructive N=8 | ~1 s | SUCCESSFUL |
 | `harness_ackpolicy.c` | `repmgr/repmgr_net.c` `got_acks` (:1117) + the `needed`/`quorum` computation in `__repmgr_send` (DB_REP_PERMANENT block) | **QUORUM:** durable => no electable-site majority (`ELECTION_MAJORITY(total electable incl. master)`) avoids a holder (master or acked electable peer) — "no election can lose it". **2-site:** STRICT => quorum 0 (master-only durable); non-strict => the single client must ack. **ALL_PEERS:** durable => every electable peer acked. **ONE_PEER:** durable => some electable peer acked. **Shortcuts:** `needed==0` is durability-safe (only when no electable peers exist); `available<needed` refuses, and `got_acks` would also refuse. `-DACKPOLICY_SABOTAGE` counts non-electable acks as peers and must FAIL QUORUM + ONE_PEER | ≤ 4 remote sites (+ master), all flags/acks nondet; electable-majority quantifier over a nondet membership bitmap | ~2–5 s/arm | SUCCESSFUL |
 | `harness_okitem.c`   | `db/db_ret.c` `__db_ret_okitem` (the #67 guard) | **safety guarantee**: if okitem returns 0 ("safe"), the exact downstream `__db_ret`/`__db_retcopy` read stays on-page (`__CPROVER_r_ok`) | page ≤ 64 bytes (loop-free) | ~1 s | SUCCESSFUL. Found a real bug (below), fixed in `2ca81268a`; `-DHPAGE_PTYPE_SABOTAGE` restores the bug and must FAIL |
+| `harness_bt_decompress.c` | `btree/bt_compress.c` `__bam_defdecompress` | **safety**: never reads outside `compressed->data[0..size)` nor `prevKey`/`prevData`, never writes past `destKey->ulen`/`destData->ulen`, for ANY input bytes | compressed ≤ 16, prev ≤ 8, dest ulen ≤ 16 (loop-free) | ~2 s | **BUG FOUND (below).** The real code FAILS (over-read); `-DB1_FIXED` builds the fix and VERIFIES. `run.sh` runs the real code as a must-FAIL arm (`b1-decompress`) until the engine fix lands |
 
 `run.sh` runs `okitem` twice: on the real engine macro (→ `VERIFICATION
 SUCCESSFUL`) and with `-DHPAGE_PTYPE_SABOTAGE`, which restores the pre-fix
@@ -180,6 +181,80 @@ order. `lts/2026.10.7` has the identical `__rep_cmp_vote` (checked below), so a
 fix would warrant an LTS backport. Flagged to the lead; left as a documented
 finding here because it does not threaten the one-master-per-generation
 invariant.
+
+## BUG FOUND (fix branch `fix/bt-decompress-bounds`) — `__bam_defdecompress` over-reads a truncated compressed item
+
+`harness_bt_decompress.c` on the **unmodified** engine code produces a
+counterexample (`VERIFICATION FAILED`). It is a **real out-of-bounds read** on
+hostile input: a compressed B-tree page comes from disk, so a corrupt or
+truncated compressed key/data item reaches `__bam_defdecompress`
+(`src/btree/bt_compress.c:483`).
+
+### Root cause
+
+The decoder reads each varint — and the leading magic byte — **before** it
+checks the compressed buffer is long enough:
+
+```c
+s = (u_int8_t*)compressed->data;
+if (*s == CMP_INT_SPARE_VAL) {        /* (1) reads s[0] with NO size check */
+    ++s; size = 1;
+    size += __db_decompress_count_int(s);   /* (2) reads s[0] (= data[1]) */
+    if (size > compressed->size)            /*     ... the check is AFTER */
+        return (EINVAL);
+    s += __db_decompress_int32(s, &prefix);
+    ...
+```
+
+`__db_decompress_count_int(buf)` returns `__db_marshaled_int_size[buf[0]]` — it
+dereferences `buf[0]`. Both call sites (the duplicate path and the
+non-duplicate path) call it, then test `size > compressed->size`, so the
+lookahead byte is read one step before the bound that would have rejected it.
+And `*s` at the very top is read with no check at all, so a **zero-length**
+compressed item (`compressed->size == 0`) over-reads immediately.
+
+The subsequent `__db_decompress_int32` reads *are* covered by the preceding
+`size > compressed->size` check (the offset bookkeeping in `size` matches `s`),
+so the over-read is exactly the `count_int` lookahead byte and the `*s` magic
+byte — up to one byte past `compressed->size` at each of the three varint
+sites, and the first byte of an empty buffer.
+
+### Minimal reproducer (CBMC counterexample)
+
+The cheapest counterexample is `compressed->size == 0`: `*s` reads
+`compressed->data[0]`, one byte past a zero-length object. A one-byte item
+whose leading byte is a multi-byte varint tag trips the `count_int` lookahead
+at the second varint. CBMC reports two genuine failures on the real code:
+`__bam_defdecompress … *s: pointer outside object bounds` and
+`varint … buf[0]: pointer outside object bounds`.
+
+### The fix (on `fix/bt-decompress-bounds`, built here as `-DB1_FIXED`)
+
+Check that the next byte index is still inside `compressed->size` **before**
+every `__db_decompress_count_int`, and that `compressed->size >= 1` before the
+magic `*s`. `harness_bt_decompress.c -DB1_FIXED` builds this variant and
+VERIFIES (no over-read, no over-write) over the whole input space.
+
+### How this harness runs
+
+`run.sh` runs two arms:
+
+* `b1-fixed` — the `-DB1_FIXED` variant — must VERIFY.
+* `b1-decompress` — the **unmodified engine code** — is registered as a
+  must-FAIL arm (like `okitem` before `2ca81268a`): it documents the live bug
+  and keeps the harness honest. When `fix/bt-decompress-bounds` lands on
+  master, flip this arm to a normal `run` (verify) and drop `-DB1_FIXED`.
+
+### Modelling note (varint helpers)
+
+The harness models `__db_decompress_count_int` / `__db_decompress_int32` by
+their exact **read footprint** (the count reads `buf[0]`; the int32 reads the
+leading `width` bytes, `width` from the real `__db_marshaled_int_size` table),
+rather than `#include`-ing `db_compint.c`. The helpers' arithmetic is already
+proved against the real source by `harness_varint.c`; re-exploring it here
+blows the SAT formula past the suite's 5-minute budget, and the property B1
+proves depends only on *which bytes* the helpers touch, which the models
+reproduce faithfully.
 
 ## BUG FOUND (fixed in `2ca81268a`) — `__db_ret_okitem` hash-offpage guard read the wrong byte
 
