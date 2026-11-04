@@ -55,11 +55,17 @@ isolate one assertion).
 | `harness_hash4.c`    | `hash/hash_func.c` `__ham_func4` (the `__db_chksum` plain-hash core) | reads exactly `len` key bytes (no OOB); deterministic; `len==0 ⇒ 0` | key ≤ 8 bytes, `--unwind 9` | ~15 s | SUCCESSFUL |
 | `harness_getlong.c`  | `common/db_getlong.c` `__db_getlong` / `__db_getulong` | success ⇒ result in `[min,max]`; ulong `max==0` = "no upper bound"; no OOB on the parse | string ≤ 6 chars, `--unwind 8` | ~1 s | SUCCESSFUL |
 | `harness_dd_find.c`  | `lock/lock_deadlock.c` `__dd_find` (waits-for bitmap cycle detection) | no OOB on the `nlockers×nalloc` bitmap matrix or deadlist; termination; deadlist entries point into the matrix and are NULL-terminated | 4 lockers, `--unwind 6` + `--unwinding-assertions` | <1 s | SUCCESSFUL |
-| `harness_okitem.c`   | `db/db_ret.c` `__db_ret_okitem` (the #67 guard) | **safety guarantee**: if okitem returns 0 ("safe"), the exact downstream `__db_ret`/`__db_retcopy` read stays on-page (`__CPROVER_r_ok`) | page ≤ 64 bytes (loop-free) | ~1 s | **FAILS on real code → BUG FOUND (below)**; SUCCESSFUL with `-DHPAGE_PTYPE_FIXED` |
+| `harness_okitem.c`   | `db/db_ret.c` `__db_ret_okitem` (the #67 guard) | **safety guarantee**: if okitem returns 0 ("safe"), the exact downstream `__db_ret`/`__db_retcopy` read stays on-page (`__CPROVER_r_ok`) | page ≤ 64 bytes (loop-free) | ~1 s | SUCCESSFUL. Found a real bug (below), fixed in `2ca81268a`; `-DHPAGE_PTYPE_SABOTAGE` restores the bug and must FAIL |
 
-`run.sh` runs `okitem` twice: `-DHPAGE_PTYPE_FIXED` (the one-line fix →
-`VERIFICATION SUCCESSFUL`, proving both the guarantee and the fix) and the
-unmodified engine macro (→ `VERIFICATION FAILED`, reproducing the bug).
+`run.sh` runs `okitem` twice: on the real engine macro (→ `VERIFICATION
+SUCCESSFUL`) and with `-DHPAGE_PTYPE_SABOTAGE`, which restores the pre-fix
+macro (→ `VERIFICATION FAILED`, the sabotage arm).
+
+`run.sh` also runs `check_copies.sh`: a harness that copies a `static`
+function proves a property of the copy, so the copy must still match `src/`.
+It compares code tokens (comments and blank lines are ignored) from the
+function's `name(` line to its closing `}`. The okitem harness drifted this way
+once, keeping the unparenthesised macro for weeks after the engine fix.
 
 ## Proof that the harnesses have teeth
 
@@ -77,7 +83,7 @@ counterexample:
   (the bug below); the `-DHPAGE_PTYPE_FIXED` build then verifies, so the
   property distinguishes correct from incorrect code.
 
-## BUG FOUND — `__db_ret_okitem` hash-offpage guard reads the wrong byte
+## BUG FOUND (fixed in `2ca81268a`) — `__db_ret_okitem` hash-offpage guard read the wrong byte
 
 `harness_okitem.c` on the **unmodified** engine code produces a
 counterexample (`VERIFICATION FAILED`). Investigation showed it is a **real
@@ -85,7 +91,7 @@ latent OOB read**, of the exact class bug #67 set out to close.
 
 ### Root cause
 
-`HPAGE_PTYPE` (src/dbinc/db_page.h:583) has no parentheses around its
+`HPAGE_PTYPE` (src/dbinc/db_page.h:583) had no parentheses around its
 argument:
 
 ```c
@@ -135,7 +141,7 @@ Confirmed by native `gcc` execution as well as CBMC (not a CBMC artifact):
 `HPAGE_PTYPE((u_int8_t *)h + off)` returns `page[0] + off`, and okitem
 returns 0 for an item whose on-page extent runs 6 bytes past the page.
 
-### Suggested fix (engine — NOT applied here; harnesses are additive)
+### The fix (applied in `2ca81268a`)
 
 One line, in `src/dbinc/db_page.h`:
 
@@ -144,11 +150,8 @@ One line, in `src/dbinc/db_page.h`:
 +#define HPAGE_PTYPE(p)  (*(u_int8_t *)(p))
 ```
 
-Building the harness with `-DHPAGE_PTYPE_FIXED` applies exactly this and the
-proof then reports `VERIFICATION SUCCESSFUL` for all okitem safety
-properties, validating the fix. (Equivalently, the two call sites could hoist
-`(u_int8_t *)h + off` into a local, but fixing the macro closes the whole
-class.)
+The harness now verifies on the real macro. `-DHPAGE_PTYPE_SABOTAGE` puts the
+old macro back, and that build must fail.
 
 ## Notes on the `okitem` harness bounds & flags
 

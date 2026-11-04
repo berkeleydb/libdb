@@ -51,43 +51,56 @@ run getlong   harness_getlong.c  harness_long   --unwind 8
 run getulong  harness_getlong.c  harness_ulong  --unwind 8
 run dd_find   harness_dd_find.c  harness  --unwind 6  --unwinding-assertions
 
-# okitem: the FIXED-macro build proves the safety guarantee holds.  We drop
-# --pointer-check here (keeping --bounds-check + __CPROVER_r_ok, the read-region
-# safety predicate) because okitem deliberately forms a past-the-end pointer
-# for its bounds math, which --pointer-check flags as a formation artifact.
-printf '=== %-14s ' "okitem(FIXED)"
-SECONDS=0
-tmp=$(mktemp)
-"$CBMC" harness_okitem.c -Istubs -DHPAGE_PTYPE_FIXED --function harness \
-	--bounds-check --no-pointer-check --unwind 65 >"$tmp" 2>&1; rc=$?
-secs=$SECONDS
-if grep -q "VERIFICATION SUCCESSFUL" "$tmp"; then
-	printf 'PASS  (%ss)  [proves the safety guarantee + the 1-line fix]\n' "$secs"
-else
-	printf 'FAIL  (%ss)\n' "$secs"; grep ": FAILURE" "$tmp" | head; FAIL=1
-fi
-rm -f "$tmp"
-
-# okitem on the UNMODIFIED engine code: expected to FAIL -- this IS the real
-# bug (see README.md "BUG FOUND").  A PASS here would mean the bug was fixed
-# upstream; flip the expectation then.
-printf '=== %-14s ' "okitem(REAL)"
+# okitem proves the safety guarantee on the real (parenthesised) HPAGE_PTYPE.
+# We drop --pointer-check here (keeping --bounds-check + __CPROVER_r_ok, the
+# read-region safety predicate) because okitem deliberately forms a past-the-end
+# pointer for its bounds math, which --pointer-check flags as a formation
+# artifact.
+printf '=== %-14s ' "okitem"
 SECONDS=0
 tmp=$(mktemp)
 "$CBMC" harness_okitem.c -Istubs --function harness \
 	--bounds-check --no-pointer-check --unwind 65 >"$tmp" 2>&1
 secs=$SECONDS
-if grep -q "VERIFICATION FAILED" "$tmp"; then
-	printf 'FAIL as expected (%ss)  [reproduces the real okitem OOB bug]\n' "$secs"
+if grep -q "VERIFICATION SUCCESSFUL" "$tmp"; then
+	printf 'PASS  (%ss)\n' "$secs"
 else
-	printf 'UNEXPECTED PASS (%ss)  [okitem bug appears fixed -- update run.sh]\n' "$secs"
-	FAIL=1
+	printf 'FAIL  (%ss)\n' "$secs"; grep ": FAILURE" "$tmp" | head; FAIL=1
 fi
 rm -f "$tmp"
 
+# Sabotage arms: each plants a real bug shape and MUST fail.  A sabotage arm
+# that verifies means its harness has no teeth.
+# sabotage <name> <file> <function> <cbmc args...>
+sabotage() {
+	local name=$1 file=$2 func=$3; shift 3
+	printf '=== %-14s ' "$name"
+	local tmp; tmp=$(mktemp); SECONDS=0
+	"$CBMC" "$file" -Istubs --function "$func" "$@" >"$tmp" 2>&1
+	if grep -q "VERIFICATION FAILED" "$tmp"; then
+		printf 'FAIL as required (%ss)\n' "$SECONDS"
+	else
+		printf 'NOT CAUGHT (%ss)  [the harness has no teeth]\n' "$SECONDS"
+		FAIL=1
+	fi
+	rm -f "$tmp"
+}
+# The pre-2ca81268a HPAGE_PTYPE (no parentheses): the real bug okitem found.
+sabotage okitem-sab harness_okitem.c harness -DHPAGE_PTYPE_SABOTAGE \
+	--bounds-check --no-pointer-check --unwind 65
+
+# Every verbatim copy must still match src/.
+printf '=== %-14s ' "copies"
+if sh ./check_copies.sh > /tmp/cbmc-copies.$$ 2>&1; then
+	printf 'PASS  (%s copies match src/)\n' "$(grep -c '^ok' /tmp/cbmc-copies.$$)"
+else
+	printf 'FAIL\n'; grep -v '^ok' /tmp/cbmc-copies.$$ | sed 's/^/        /' | head -20; FAIL=1
+fi
+rm -f /tmp/cbmc-copies.$$
+
 echo
 if [ $FAIL -eq 0 ]; then
-	echo "ALL HARNESSES OK (verifying harnesses passed; okitem reproduces its bug)"
+	echo "ALL HARNESSES OK (every harness verified, every sabotage arm failed, every copy matches src/)"
 else
 	echo "SOME HARNESSES FAILED"
 fi

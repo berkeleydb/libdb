@@ -1,0 +1,45 @@
+# CBMC formal-verification harnesses (test/cbmc, RFC 0025).
+#
+# Each harness proves memory-safety and functional properties of a libdb
+# function over ALL inputs within a stated bound (see test/cbmc/README.md).
+# run.sh also runs each harness's sabotage arm, which must FAIL, and checks
+# that every verbatim copy in a harness still matches src/.
+#
+# Runs on every PR and push, not on a paths filter: a harness covers code
+# wherever it lives in src/, and a filter that lists files silently skips a
+# change to a file someone forgot to add.  The whole suite takes under a
+# minute after the nix shell is warm.
+name: CBMC
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: cbmc-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  cbmc:
+    name: cbmc harnesses
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: cbmc --version
+        run: nix develop . --command bash -c 'cbmc --version'
+
+      - name: Run CBMC harness suite
+        run: nix develop . --command bash test/cbmc/run.sh

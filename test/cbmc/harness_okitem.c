@@ -39,24 +39,15 @@
  *        is loop-free.
  *
  * ===========================================================================
- * REAL BUG FOUND (see test/cbmc/README.md "BUG FOUND"):
+ * REAL BUG FOUND, now FIXED (2ca81268a; see test/cbmc/README.md):
  *   __db_ret_okitem's two hash-offpage guards call
  *       HPAGE_PTYPE((u_int8_t *)h + off)
- *   but the HPAGE_PTYPE(p) macro (src/dbinc/db_page.h:583) is
- *       #define HPAGE_PTYPE(p) (*(u_int8_t *)p)     <-- no () around p
- *   so with a compound argument it parses as
- *       *(u_int8_t *)(u_int8_t *)h + off   ==   page[0] + off
- *   i.e. it reads the page's first byte plus off, NOT the item's type byte
- *   at page[off].  okitem therefore mis-detects H_OFFPAGE items on hash
- *   pages and can pass an item whose HOFFPAGE header runs past the page end
- *   -- the exact OOB-read CLASS that bug #67 set out to close.  These are
- *   the ONLY two call sites in src/ that pass a compound expression to
- *   HPAGE_PTYPE; every other caller passes a bare pointer, so this is
- *   isolated to okitem.
- *
- *   Compile with -DHPAGE_PTYPE_FIXED to use a correctly-parenthesized macro
- *   and see the property VERIFY -- this both proves the harness has teeth
- *   and validates the one-line engine fix (add parens: (*(u_int8_t *)(p))).
+ *   and the macro used to be  #define HPAGE_PTYPE(p) (*(u_int8_t *)p),  with
+ *   no parentheses around p, so the call read page[0] + off instead of the
+ *   item's type byte page[off] and could pass an H_OFFPAGE item whose header
+ *   runs past the page end.  The harness now uses the real (parenthesised)
+ *   macro and VERIFIES.  -DHPAGE_PTYPE_SABOTAGE restores the old macro; that
+ *   build must FAIL, which is the harness's teeth.
  * ===========================================================================
  */
 
@@ -131,10 +122,10 @@ typedef struct _boverflow { db_indx_t unused1; u_int8_t type; u_int8_t unused2; 
 
 typedef struct _hoffpage { u_int8_t type; u_int8_t unused[3]; db_pgno_t pgno; u_int32_t tlen; } HOFFPAGE;
 #define HOFFPAGE_SIZE (sizeof(HOFFPAGE))
-#ifdef HPAGE_PTYPE_FIXED
-#define HPAGE_PTYPE(p) (*(u_int8_t *)(p))   /* proposed engine fix: parens */
+#ifdef HPAGE_PTYPE_SABOTAGE
+#define HPAGE_PTYPE(p) (*(u_int8_t *)p)     /* the pre-2ca81268a macro: no parens (the bug) */
 #else
-#define HPAGE_PTYPE(p) (*(u_int8_t *)p)     /* VERBATIM src/dbinc/db_page.h:583 (buggy) */
+#define HPAGE_PTYPE(p) (*(u_int8_t *)(p))   /* VERBATIM src/dbinc/db_page.h (fixed in 2ca81268a) */
 #endif
 #define HKEYDATA_SIZE(len) ((len) + SSZA(HKEYDATA, data))
 typedef struct _hkeydata { u_int8_t type; u_int8_t data[1]; } HKEYDATA;
