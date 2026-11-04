@@ -203,7 +203,7 @@ b1_fixed_defdecompress(dbp, prevKey, prevData, compressed, destKey, destData)
 		 * sum, or prefix + suffix and size + suffix wrap and the copies
 		 * below run with a huge length.
 		 */
-	#ifndef B1_NO_WRAP_CHECK
+#ifndef B1_NO_WRAP_CHECK
 	if (prefix > prevData->size ||
 		    suffix > compressed->size - size ||
 		    suffix > UINT32_MAX - prefix)
