@@ -43,6 +43,8 @@
  * Verdict lines are explicit ("PASS:" / "FAIL:") so a harness can assert a
  * real verdict was produced rather than trusting the exit status alone.
  */
+#include "db_config.h"
+
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <signal.h>
@@ -51,7 +53,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "db_config.h"
 #include "db_int.h"
 #include "dbinc/mp.h"
 
