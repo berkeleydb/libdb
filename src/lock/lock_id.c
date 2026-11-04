@@ -550,8 +550,50 @@ __lock_getlocker_int(lt, locker, create, retp)
 			F_CLR(&lt->reginfo, REGION_TRACKED);
 			LOCK_REGION_UNLOCK(lt->env);
 			LOCK_LOCKERS(env, region);
-			if (nlockers == 0)
-				return (__lock_nomem(env, "locker entries"));
+			if (nlockers == 0) {
+				/*
+				 * The region cannot grow st_lockers any further
+				 * (it has reached st_maxlockers = lk_max_lockers),
+				 * yet this stripe's free list is empty.  Under P12's
+				 * per-stripe free lists the global cap can be
+				 * unreached while THIS stripe is dry and OTHER
+				 * stripes still hold idle free lockers -- the id hash
+				 * can pile creates onto a few stripes (recovery's
+				 * backward pass makes one locker per prepared txn,
+				 * recd015).  Before failing, steal a free locker from
+				 * another stripe onto this one.
+				 *
+				 * Safe because this path holds LOCK_LOCKERS (all
+				 * stripes, exclusive), so every stripe's free_lockers
+				 * is ours to touch.  The stolen locker's bucket (and
+				 * therefore its stripe) is recomputed from its id
+				 * below, which is THIS stripe, so it is inserted on
+				 * this stripe's bucket chain and ulinks list and, when
+				 * freed, returns to this stripe's free list
+				 * (__lock_freelocker_int derives the stripe the same
+				 * way) -- a one-way migration, never a cross-stripe
+				 * leak.  The retained mtx_locker travels with it; a
+				 * logical-lock mutex carries no stripe identity.
+				 */
+				for (s = 0; s < LOCK_LOCKER_STRIPES; s++) {
+					if (s == LOCK_LOCKER_ALLOC_STRIPE(region,
+					    LOCK_LOCKER_STRIPE(indx)))
+						continue;
+					if ((sh_locker = SH_TAILQ_FIRST(&region->
+					    locker_stripe[s].free_lockers,
+					    __db_locker)) == NULL)
+						continue;
+					SH_TAILQ_REMOVE(&region->
+					    locker_stripe[s].free_lockers,
+					    sh_locker, links, __db_locker);
+					SH_TAILQ_INSERT_HEAD(&ls->free_lockers,
+					    sh_locker, links, __db_locker);
+					break;
+				}
+				if (s == LOCK_LOCKER_STRIPES)
+					return (__lock_nomem(env,
+					    "locker entries"));
+			}
 			/*
 			 * Spread the new lockers across ALL stripes' free lists,
 			 * round-robin starting at this one.
