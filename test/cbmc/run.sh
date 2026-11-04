@@ -69,6 +69,7 @@ run logc-hdrchk  harness_logc_hdrchk.c harness                                 #
 run logc-hdrchk2 harness_logc_hdrchk.c harness -DL1_SET_MAXREC_SHRINK          # L1 w/ maxrec re-read that shrinks
 run env-alloc    harness_env_alloc_size.c harness --unwind 12 --unwinding-assertions  # E1 region size classes
 run env-alloc-d  harness_env_alloc_size.c harness -DE1_DIAGNOSTIC --unwind 12 --unwinding-assertions  # E1 DIAGNOSTIC size
+run b2-roundtrip harness_bt_roundtrip.c harness --unwind 6                      # B2 compress/decompress round trip
 
 # okitem proves the safety guarantee on the real (parenthesised) HPAGE_PTYPE.
 # We drop --pointer-check here (keeping --bounds-check + __CPROVER_r_ok, the
@@ -130,6 +131,10 @@ sabotage logc-hdrchk-sab harness_logc_hdrchk.c harness -DL1_SABOTAGE \
 # next, larger queue -- the chosen class is no longer the smallest that fits.
 sabotage env-alloc-sab harness_env_alloc_size.c harness -DE1_SABOTAGE \
 	--bounds-check --pointer-check --unwind 12 --unwinding-assertions
+# B2: dropping the duplicate-path magic byte on the compress side makes
+# decompress misread a duplicate record, so the round trip fails.
+sabotage b2-roundtrip-sab harness_bt_roundtrip.c harness -DB2_SABOTAGE \
+	--bounds-check --pointer-check --unwind 6
 # H1: swapping LOG_COMPARE's order arms breaks winner-maximises-LSN (d).
 sabotage cmpvote-sab harness_cmpvote.c harness_likepri -DCMPVOTE_SABOTAGE \
 	--bounds-check --pointer-check
