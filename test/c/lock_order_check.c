@@ -192,7 +192,8 @@ two_env_open(const char *tag)
 	return (dbenv);
 }
 
-static void
+/* int, not void: MUTEX_LOCK returns DB_RUNRECOVERY from its caller on panic. */
+static int
 two_env(void)
 {
 	DB_ENV *a, *b;
@@ -214,6 +215,7 @@ two_env(void)
 	MUTEX_UNLOCK(a->env, ma);
 	CK(b->close(b, 0));
 	CK(a->close(a, 0));
+	return (0);
 }
 
 int
@@ -227,9 +229,10 @@ main(int argc, char **argv)
 	 * the partition count.
 	 */
 	if (argc == 3 && strcmp(argv[1], "--arm") == 0) {
-		if (strcmp(argv[2], "2env") == 0)
-			two_env();
-		else
+		if (strcmp(argv[2], "2env") == 0) {
+			if (two_env() != 0)
+				return (1);
+		} else
 			workload((u_int32_t)atoi(argv[2]));
 		printf("ARM_COMPLETED\n");
 		return (0);
