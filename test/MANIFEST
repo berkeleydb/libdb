@@ -510,6 +510,12 @@ db	run_bamc_prev_alias
 db	run_truncate_subdb
 db	run_mf_discard_order
 db	run_r1_revive
+# SKIPs on a build without --enable-compression.  Proves __bam_defdecompress
+# rejects a truncated compressed item instead of over-reading past its end (a
+# corrupt btree page from disk); the over-read faults on a PROT_NONE guard
+# page on any build.
+db	run_bt_decompress_bounds
+
 
 # ---------------------------------------------------------------------------
 # TCL suite.  The targeted per-push subset only (the full run_std suite is
