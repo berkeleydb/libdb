@@ -523,6 +523,16 @@ __bam_defdecompress(dbp, prevKey, prevData, compressed, destKey, destData)
 			return (EINVAL);
 		s += __db_decompress_int32(s, &suffix);
 
+		/*
+		 * prefix and suffix are from disk too: bound them before any
+		 * sum, or prefix + suffix and size + suffix wrap and the copies
+		 * below run with a huge length.
+		 */
+		if (prefix > prevData->size ||
+		    suffix > compressed->size - size ||
+		    suffix > UINT32_MAX - prefix)
+			return (EINVAL);
+
 		/* Check destination lengths */
 		destKey->size = prevKey->size;
 		destData->size = prefix + suffix;
@@ -572,6 +582,13 @@ __bam_defdecompress(dbp, prevKey, prevData, compressed, destKey, destData)
 	if (size > compressed->size)
 		return (EINVAL);
 	s += __db_decompress_int32(s, &destData->size);
+
+	/* As above: bound the on-disk lengths before any sum can wrap. */
+	if (prefix > prevKey->size ||
+	    suffix > compressed->size - size ||
+	    suffix > UINT32_MAX - prefix ||
+	    destData->size > compressed->size - size - suffix)
+		return (EINVAL);
 
 	/* Check destination lengths */
 	destKey->size = prefix + suffix;
@@ -629,8 +646,16 @@ __bamc_start_decompress(dbc)
 	cp->prevcursor = NULL;
 	cp->prev2cursor = NULL;
 
-	/* Unmarshal the first data */
+	/*
+	 * Unmarshal the first data.  The item is from disk: bound the varint
+	 * and the length it gives, as __bam_compress_salvage does.
+	 */
+	if (cp->compressed.size == 0 ||
+	    __db_decompress_count_int(cp->compcursor) > cp->compressed.size)
+		return (EINVAL);
 	cp->compcursor += __db_decompress_int32(cp->compcursor, &datasize);
+	if (datasize > (u_int32_t)(cp->compend - cp->compcursor))
+		return (EINVAL);
 	ret = __bam_compress_set_dbt(dbc->dbp,
 	    cp->currentData, cp->compcursor, datasize);
 
