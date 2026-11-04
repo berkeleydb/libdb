@@ -207,8 +207,7 @@ b1_fixed_defdecompress(dbp, prevKey, prevData, compressed, destKey, destData)
 		return (0);
 	}
 
-	if (size >= compressed->size)
-		return (EINVAL);
+	/* s[0] is covered by the compressed->size >= 1 check at the top. */
 	size = __db_decompress_count_int(s);
 	if (size > compressed->size)
 		return (EINVAL);
