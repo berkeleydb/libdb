@@ -114,25 +114,16 @@ else
 	echo "    SKIP: libfiu unavailable"; hi_emit s3-fiu-malloc skip
 fi
 
-# ---- s3-umem: guard redzones + contents (fill-pattern) over the workload --
+# ---- s3-umem: guard redzones, fill pattern and audit stacks over the workload
 echo "== s3-umem =="
 if fi_have umem; then
-	# UMEM_DEBUG mode: the brief asks for `default` (guards + audit).  On some
-	# hosts the `audit` component (per-buffer stack capture) aborts even a
-	# trivial program at startup, with no detection report -- a libumem/host
-	# limitation, NOT a libdb heap bug (a 1-malloc program aborts too).  Probe
-	# `default` with a trivial program; if it aborts spuriously, fall back to
-	# `guards,contents`, which is the DETECTION half of default (redzone +
-	# fill-pattern): it still catches an overflow and a use-after-free (the
-	# sabotage arm proves this), just without the audit backtraces.
-	# UMEM_DEBUG mode: guards,contents, the detection half of `default`
-	# (redzones + fill pattern).  It catches the planted overflow (the
-	# sabotage arm below) and runs the libdb workload clean.  `default` adds
-	# the audit component, which is not usable here: on the dev box it aborts
-	# a one-malloc program (F1-002), and on the GitHub Ubuntu 26.04 runner it
-	# HANGS intermittently (F1-003) -- a probe passed and the workload then
-	# hung, so no probe can vouch for it.  S3_UMEM_MODE overrides.
-	UMODE=${S3_UMEM_MODE:-guards,contents}
+	# UMEM_DEBUG mode: `default` (redzones, fill pattern, and audit
+	# allocation/free stacks).  Before libumem 4.3.2 the audit component
+	# re-entered the allocator under LD_PRELOAD, so `default` aborted on the
+	# dev box (F1-002) and hung on the Ubuntu 26.04 runner (F1-003), and this
+	# arm used guards,contents.  install.sh pins 4.3.2, which fixes that.
+	# S3_UMEM_MODE overrides; guards,contents still works.
+	UMODE=${S3_UMEM_MODE:-default}
 
 	_home="$RUN/umem/home"; mkdir -p "$_home"
 	# Every libumem run is bounded: on the Ubuntu 26.04 runner this arm hung
@@ -184,7 +175,7 @@ CEOF
 	"${CC:-cc}" -O0 "$RUN/sab_oob.c" -o "$RUN/sab_oob" 2>/dev/null
 	# Use the SAME mode the s3-umem arm settled on, so the teeth match the
 	# detection actually in force.
-	UMODE=${UMODE:-guards,contents}
+	UMODE=${UMODE:-default}
 	sout=$(timeout -k 5 30 env LD_PRELOAD="$UMEM_SO" UMEM_DEBUG="$UMODE" \
 	    UMEM_OPTIONS=abort "$RUN/sab_oob" 2>&1)
 	src2=$?

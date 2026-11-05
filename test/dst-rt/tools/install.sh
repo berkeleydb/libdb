@@ -36,7 +36,7 @@ SKIP_APT=${SKIP_APT:-0}
 LIBDIRECTIO_REPO=https://github.com/gburd/libdirectio
 LIBDIRECTIO_PIN=67e57c3064f2d56273376d41bb759320c9e93110
 LIBUMEM_REPO=https://codeberg.org/gregburd/libumem
-LIBUMEM_PIN=fe9ff96114fbcbf63f89fefec6bc9585efb445f0
+LIBUMEM_PIN=60a64527e8710d955062d0c9f5fd44ce335fa7c1	# tag v4.3.2: audit re-entrancy fix (F1-002/F1-003)
 FAINT_REPO=https://github.com/misc0110/faint
 FAINT_PIN=b24cf2d573d245a3eb53fe47ffe3296355c09676
 # libfiu: apt where packaged (Debian 12: 1.1); Ubuntu 26.04 dropped it, so
