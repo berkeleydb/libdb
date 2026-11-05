@@ -65,8 +65,9 @@ hot path. Gate 8 (the soak) is skipped unless a fix touches resource lifetime.
 The release notes say which gates ran.
 
 The LTS patch releases are recorded in
-[`QUAL-2026.10.7.1.md`](QUAL-2026.10.7.1.md) and
-[`QUAL-2026.10.7.2.md`](QUAL-2026.10.7.2.md).
+[`QUAL-2026.10.7.1.md`](QUAL-2026.10.7.1.md),
+[`QUAL-2026.10.7.2.md`](QUAL-2026.10.7.2.md) and
+[`QUAL-2026.10.7.3.md`](QUAL-2026.10.7.3.md).
 
 ## Additional gates for the LTS declaration
 
