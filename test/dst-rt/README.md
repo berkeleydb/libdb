@@ -59,10 +59,10 @@ Gotchas the install encodes (so you do not rediscover them):
   `fault_inject32.so` (needs the 32-bit multilib). We build the 64-bit objects,
   stub the 32-bit blob, and hand-link; `map_c.o` must be compiled with `gcc`
   (as C++ the `_map_init`/`map` symbols `faint.c` references get mangled).
-- **libumem `UMEM_DEBUG=default` aborts** any program at startup on the dev box
-  (the `audit` component); S3 falls back to `UMEM_DEBUG=guards,contents`, the
-  detection half, which runs clean and still catches overflow + UAF. See
-  FINDINGS F1-002.
+- **libumem must be 4.3.2 or later.** Before it, `UMEM_DEBUG=default` (its
+  `audit` component) aborted any program at startup on the dev box and hung on
+  the Ubuntu 26.04 runner, so S3 used `UMEM_DEBUG=guards,contents`. install.sh
+  pins 4.3.2, and S3 uses `default` again. See FINDINGS F1-002 and F1-003.
 
 ## The oracle (`rtcheck`) and the ACK log
 
@@ -183,4 +183,5 @@ Real bugs a scenario finds are issue-style write-ups in
 [`FINDINGS.md`](FINDINGS.md), each with a reproducer. Engine fixes go on their
 own branches from `origin/master`, never on `test/dst-rt`. F1-001 (libdb cannot
 open under a *blanket* O_DIRECT; the native direct path is clean) and F1-002
-(libumem `audit` mode aborts on the dev box) are recorded there.
+(libumem `audit` mode aborted on the dev box; fixed in libumem 4.3.2) are
+recorded there.

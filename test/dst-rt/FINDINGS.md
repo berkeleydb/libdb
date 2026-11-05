@@ -122,7 +122,9 @@ tripping the buffered-region writes.  `s1-preload-directio` PASSES.
 
 ### F1-002 (tool note, not a libdb bug): libumem `UMEM_DEBUG=default` aborts on the dev box
 
-**Status:** tool limitation, documented; the harness works around it.
+**Status:** fixed upstream in libumem v4.3.2 (`60a6452`; fix `490c943`,
+regression test `4abe0f6`). `install.sh` pins it, and the s3-umem arm uses
+`default` again. See "Fixed in libumem 4.3.2" after F1-003.
 
 On the dev box (Debian 12, x86_64, libumem built from the pinned commit),
 `UMEM_DEBUG=default` (which includes the `audit` per-buffer stack-capture
@@ -151,6 +153,8 @@ fill-pattern violation.  rtcheck verifies the data afterwards.
 
 ### F1-003 (tool, not a libdb bug): libumem `UMEM_DEBUG=default` HANGS on the GitHub Ubuntu 26.04 runner
 
+**Status:** fixed upstream in libumem v4.3.2, as F1-002.
+
 Where F1-002 saw `default` abort on the dev box, the hosted runner (kernel
 7.0.0-1017-azure, 4 vCPU, libumem fe9ff961 with its rseq fast path) **hangs**:
 a trivial one-`malloc` program under `LD_PRELOAD=libumem_malloc.so
@@ -175,9 +179,47 @@ in the workload is a FAIL verdict, never a silently cancelled job.  FAINT is
 bounded the same way (`S3_FAINT_TIMEOUT`=120 s); it was **not** the hang (it
 finishes in < 1 s on the runner, 4 injection positions, 0 crashes).
 
-Report upstream to libumem: `UMEM_DEBUG=default` (the `audit` component) both
-aborts (dev box, Debian 12 kernel 6.1) and hangs (Ubuntu 26.04 kernel 7.0) on a
-trivial program.
+Reported upstream to libumem on 2026-11-04: `UMEM_DEBUG=default` (the `audit`
+component) both aborts (dev box, Debian 12 kernel 6.1) and hangs (Ubuntu 26.04
+kernel 7.0) on a trivial program.
+
+### Fixed in libumem 4.3.2
+
+**Cause (libumem's diagnosis, matching ours).** With `audit` on, libumem
+records a stack for every vmem segment from inside `vmem_hash_insert()`, while
+it holds vmem locks. The first stack walk on each thread asked glibc
+`pthread_getattr_np()` for the stack bounds, and that call allocates. Under
+`LD_PRELOAD` the allocation is libumem's own, so the allocator re-entered
+itself. It then either failed the `VMC_POPULATOR` assertion (F1-002) or
+deadlocked its update thread against the main thread (F1-003), depending on
+rseq and timing.
+
+**Fix.** libumem 4.3.2 reads the stack bounds from `/proc/self/maps` with plain
+`open`/`read` into a stack buffer, so nothing on that path allocates. The fix
+is `490c943`, its regression test is `test/security/test_audit_reentry.sh`
+(`4abe0f6`), and the release is `v4.3.2` (`60a6452`). The ABI is unchanged.
+
+**Verified on the dev box** (Debian 12, x86_64, 32 vCPU, 2026-11-05). Each
+library was first shown live, by catching a planted 64-into-16 overflow under
+`guards,contents`. The programs are the one-`malloc` reproducer and a
+first-`malloc`-on-a-new-thread variant, 25 runs per cell:
+
+| `UMEM_DEBUG` / `UMEM_OPTIONS` | `fe9ff96` (old pin) | `60a6452` (v4.3.2) |
+|---|---|---|
+| `audit` | 25/25 abort | 25/25 exit 0 |
+| `audit` + `norseq` | 25/25 hang | 25/25 exit 0 |
+| `default` | 25/25 abort | 25/25 exit 0 |
+| `default` + `norseq` | 25/25 hang | 25/25 exit 0 |
+
+The s3 scenario against libdb `master` with 4.3.2 and `UMEM_DEBUG=default`:
+s3-umem is clean (no heap error, data verified) and s3-umem-sabotage catches
+the planted overflow, on seeds 1-5. `guards,contents` gives the same verdicts.
+
+**Harness change.** `install.sh` pins `LIBUMEM_PIN` to `60a6452`, and s3 uses
+`UMEM_DEBUG=default` again, so the audit allocation and free stacks are back in
+its reports. Every libumem run stays under `timeout -k`, because the SIGKILL
+fallback is what ends a hung `LD_PRELOAD` process. `S3_UMEM_MODE=guards,contents`
+still selects the old mode.
 
 # Part 2 — multi-node HA and XA (F2, scenarios S4–S8)
 
