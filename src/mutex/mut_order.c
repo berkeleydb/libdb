@@ -438,6 +438,7 @@ __db_lo_check(env, mutex, file, line)
 	if (mutex == MUTEX_INVALID || env == NULL || lo_reported)
 		return;
 
+	nw.env = env;
 	nw.mutex = mutex;
 	nw.alloc_id = lo_alloc_id(env, mutex);
 	nw.rank = __db_lo_rank(nw.alloc_id);
@@ -448,6 +449,17 @@ __db_lo_check(env, mutex, file, line)
 		return;
 
 	for (i = 0; i < lo_depth; i++) {
+		/*
+		 * A mutex index is relative to one environment's mutex region,
+		 * so the same index in another environment is another latch,
+		 * and two environments have no order between them.  A thread
+		 * that holds a latch in one and takes one in another (the TCL
+		 * replication transport does, from inside the send callback)
+		 * is not a violation.
+		 */
+		if (lo_stack[i].env != env)
+			continue;
+
 		/*
 		 * Same latch twice on one thread.  Rank-independent: these are
 		 * not recursive latches, so this is an unconditional
@@ -498,6 +510,7 @@ __db_lo_acquire(env, mutex, file, line)
 	if (mutex == MUTEX_INVALID || env == NULL || lo_reported)
 		return;
 
+	nw.env = env;
 	nw.mutex = mutex;
 	nw.alloc_id = lo_alloc_id(env, mutex);
 	nw.rank = __db_lo_rank(nw.alloc_id);
@@ -553,12 +566,11 @@ __db_lo_release(env, mutex)
 {
 	int i;
 
-	COMPQUIET(env, NULL);
 	if (mutex == MUTEX_INVALID || lo_reported)
 		return;
 
 	for (i = lo_depth; i-- > 0; )
-		if (lo_stack[i].mutex == mutex) {
+		if (lo_stack[i].env == env && lo_stack[i].mutex == mutex) {
 			if (i != lo_depth - 1)
 				memmove(&lo_stack[i], &lo_stack[i + 1],
 				    (size_t)(lo_depth - i - 1) *

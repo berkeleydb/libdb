@@ -48,7 +48,7 @@ for t in leak_si_locker leak_si_mvcc_mtx mvcc_purge_visible health_stats \
 	echo "=== building $t"
 	# shellcheck disable=SC2086
 	$CC -g -O1 -Wall -Wextra -Wno-unused-parameter \
-		-I"$BUILD" "$HERE/$t.c" "$BUILD/libdb.a" \
+		-I"$BUILD" -I"$HERE/../../src" "$HERE/$t.c" "$BUILD/libdb.a" \
 		$LDF $LIBS -ldl -lpthread -o "$RUNDIR/$t"
 done
 

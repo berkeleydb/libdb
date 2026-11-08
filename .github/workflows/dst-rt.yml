@@ -1,0 +1,217 @@
+# RFC 0024 runtime fault-injection tier (F1 single-node).
+#
+# A third DST layer: faults injected from OUTSIDE the process on one Linux host
+# -- libfiu (per-syscall EIO/ENOSPC/short/malloc), libdirectio (blanket
+# O_DIRECT), libumem (redzone/UAF) and FAINT (one-fault-per-call-site sweep) --
+# over rtload/rtnode/rtcheck, checked by the §2.4 invariant oracle.  See
+# rfc/0024-runtime-fault-injection.md and test/dst-rt/README.md.
+#
+# Gating policy (RFC 0024 §2.6):
+#   - PR tier (this file, `pr` job): S1, S2, S3 at 2 seeds, <= 20 min, on
+#     ubuntu-latest with the source-built tools CACHED.  Hard gate on changes
+#     under test/dst-rt/** and the engine paths faults exercise.
+#   - Nightly: all single-node scenarios incl. the S9 soak, 20 seeds, scheduled.
+#
+# Each tool is optional: a runner without netns/a tool SKIPs those arms (the
+# verdict is `skip`, which the manifest gate accepts), so the job is honest
+# about what it could not exercise rather than failing.
+
+name: DST runtime fault injection (RFC 0024)
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    paths:
+      - 'test/dst-rt/**'
+      - 'test/MANIFEST'
+      - 'test/harness.sh'
+      - 'test/check_manifest.sh'
+      - 'src/os/**'
+      - 'src/env/**'
+      - 'src/log/**'
+      - 'src/txn/**'
+      - 'dist/**'
+      - '.github/workflows/dst-rt.yml'
+  schedule:
+    # Nightly at 05:23 UTC, offset from ci.yml (03:17) and test-tiers.yml
+    # (04:41) so the hosted runners do not contend.
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: 'tier: pr | nightly'
+        default: 'pr'
+      seeds:
+        description: 'seed list (overrides the tier default)'
+        default: ''
+
+concurrency:
+  group: dst-rt-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  dst-rt:
+    name: dst-rt single-node (${{ github.event_name == 'schedule' && 'nightly' || 'pr' }})
+    runs-on: ubuntu-latest
+    # The PR tier is budgeted <= 20 min; give headroom for a cold tool build.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps + libfiu/iproute2 (apt)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            liburing-dev libssl-dev iproute2 \
+            build-essential git autoconf automake libtool pkg-config \
+            util-linux   # setarch, for FAINT (ASLR off)
+          # libfiu is packaged on Debian 12 and Ubuntu <= 24.04 but not on
+          # 26.04; install.sh builds it from a pinned source tag when absent.
+          sudo apt-get install -y fiu-utils libfiu-dev || true
+
+      # The source-built tools (libdirectio, libumem, FAINT) are expensive to
+      # build; cache them keyed on install.sh's content (which pins the
+      # commits).  A cache hit restores /opt/dst-rt and install.sh re-runs
+      # cheaply (clone_pin updates to the same commit, make is a no-op).
+      - name: Cache source-built fault tools
+        id: cache-tools
+        uses: actions/cache@v4
+        with:
+          path: /opt/dst-rt
+          key: dst-rt-tools-${{ runner.os }}-${{ hashFiles('test/dst-rt/tools/install.sh') }}
+
+      - name: Install the runtime fault-injection tools
+        run: |
+          sudo mkdir -p /opt/dst-rt
+          sudo chown "$(id -u):$(id -g)" /opt/dst-rt
+          # apt packages already installed above; SKIP_APT keeps this step to
+          # the source builds only.  install.sh prints a TOOLS: line.
+          SKIP_APT=1 PREFIX=/opt/dst-rt sh test/dst-rt/tools/install.sh
+
+      # --enable-o_direct so the S1 native-directio arm (DB_DIRECT_DB +
+      # DB_LOG_DIRECT) is reachable; --enable-diagnostic so DB_ASSERTs are live
+      # under the injected faults.  The harness links libdb.a directly, so no
+      # --enable-test/--enable-tcl is needed.
+      - name: Build libdb (diagnostic + o_direct)
+        working-directory: build_unix
+        run: |
+          ../dist/configure --enable-diagnostic --enable-o_direct
+          make -j"$(nproc)"
+
+      - name: Run the dst-rt single-node swarm
+        env:
+          BUILD: ${{ github.workspace }}/build_unix
+          DSTRT_DIR: ${{ github.workspace }}/test/dst-rt
+          TOOLS_PREFIX: /opt/dst-rt
+          LIBDB_RESULTS_DIR: ${{ github.workspace }}/test/.results
+          DSTRT_RUN_ROOT: ${{ runner.temp }}/dst-rt-runs
+        run: |
+          mkdir -p "$DSTRT_RUN_ROOT"
+          TIER="${{ github.event.inputs.tier }}"
+          if [ -z "$TIER" ]; then
+            if [ "${{ github.event_name }}" = schedule ]; then TIER=nightly; else TIER=pr; fi
+          fi
+          SEEDS_ARG=""
+          [ -n "${{ github.event.inputs.seeds }}" ] && SEEDS_ARG="--seeds '${{ github.event.inputs.seeds }}'"
+          echo "running tier=$TIER"
+          eval sh test/dst-rt/run.sh --tier "$TIER" $SEEDS_ARG
+
+      # The manifest gate: every dst-rt arm the tier promised must have produced
+      # a verdict (pass/fail/skip).  A MISSING line -- a test nobody ran -- fails
+      # here, which an exit status alone cannot catch.  --tier dst-rt makes the
+      # tier's own absence fatal: this step runs only because the swarm ran, so
+      # no results file means no evidence at all.
+      - name: Manifest gate (every dst-rt arm produced a verdict)
+        if: always()
+        run: ./test/check_manifest.sh --tier dst-rt
+
+      - name: Upload verdicts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dst-rt-verdicts
+          path: test/.results/*.results
+          if-no-files-found: ignore
+
+      # On failure, keep the env homes, ack logs and fault schedules so a
+      # finding is reproducible from the uploaded artifact (§2.4).
+      - name: Upload run artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dst-rt-artifacts
+          path: ${{ runner.temp }}/dst-rt-runs/**
+          if-no-files-found: ignore
+
+  # F2: the multi-node HA scenarios (S4, S5) need network namespaces, which need
+  # CAP_NET_ADMIN.  GitHub's hosted Linux runners have passwordless sudo, so
+  # `sudo ip netns` works there; if it does not (a restricted runner), the job
+  # SKIPs cleanly rather than failing -- the scenarios themselves also exit 77
+  # (skip) when fi_env finds no netns.  Short: S4 and S5 (both arms) at 3 seeds.
+  ha:
+    name: dst-rt HA (S4, S5 x3 seeds)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps + iproute2/nftables/libfiu (apt)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            liburing-dev libssl-dev iproute2 nftables \
+            build-essential git autoconf automake libtool pkg-config
+          sudo apt-get install -y fiu-utils libfiu-dev || true
+
+      - name: Probe network-namespace permission (SKIP the job if absent)
+        id: netns
+        run: |
+          # the hosted runners allow this; a restricted runner does not.
+          if sudo ip netns add dstrt-ciprobe 2>/dev/null; then
+            sudo ip netns del dstrt-ciprobe 2>/dev/null || true
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=0" >> "$GITHUB_OUTPUT"
+            echo "::notice::network namespaces unavailable on this runner -- HA job SKIPPED"
+          fi
+
+      - name: Build libdb (diagnostic)
+        if: steps.netns.outputs.ok == '1'
+        working-directory: build_unix
+        run: |
+          ../dist/configure --enable-diagnostic
+          make -j"$(nproc)"
+          make -j"$(nproc)" db_dump db_stat db_verify db_recover
+
+      - name: Run the HA scenarios S4 and S5 (3 seeds, both arms)
+        if: steps.netns.outputs.ok == '1'
+        env:
+          BUILD: ${{ github.workspace }}/build_unix
+          DSTRT_DIR: ${{ github.workspace }}/test/dst-rt
+          DSTRT_RUN_ROOT: ${{ runner.temp }}/dst-rt-ha-runs
+        run: |
+          mkdir -p "$DSTRT_RUN_ROOT"
+          # the HA swarm section of run.sh runs S4 and S5 at the PR tier
+          # (short), with the S5 sabotage arm; DSTRT_HA_ONLY skips the
+          # single-node set, RETRY small for CI time.
+          DSTRT_HA_ONLY=1 RETRY=3 sh test/dst-rt/run.sh --tier pr --seeds "1 2 3"
+
+      - name: Clean up namespaces (always)
+        if: always()
+        run: |
+          for ns in $(ip netns list 2>/dev/null | awk '/dstrt/{print $1}'); do
+            sudo ip netns del "$ns" 2>/dev/null || true
+          done
+          true
+
+      - name: Upload HA run artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dst-rt-ha-artifacts
+          path: ${{ runner.temp }}/dst-rt-ha-runs/**
+          if-no-files-found: ignore
