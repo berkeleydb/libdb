@@ -138,12 +138,15 @@ __memp_si_rwconflict(env, txn, visible_bhp)
 			continue;
 		/*
 		 * Only a writer still relevant to serializability: running,
-		 * or committed after R's snapshot (concurrent).  A version
-		 * whose owner committed before R's read_lsn is part of R's
-		 * consistent snapshot -- not a conflict.
+		 * or committed strictly after R's snapshot (TXN_SI_CONCURRENT).
+		 * A version whose owner committed at or before R's read_lsn is
+		 * part of R's consistent snapshot -- not a conflict.  Strict for
+		 * the same reason as the lock-table test: an inclusive boundary
+		 * livelocked SSI under retry pressure (#257).  Mirrors the
+		 * committed-reader test in __lock_get_internal (mechanism a).
 		 */
 		if (wtd->status != TXN_RUNNING &&
-		    LOG_COMPARE(&wtd->visible_lsn, &rtd->read_lsn) <= 0)
+		    !TXN_SI_CONCURRENT(wtd, rtd))
 			continue;
 
 		/*
