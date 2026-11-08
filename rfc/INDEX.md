@@ -22,6 +22,9 @@ process. Status: Draft · Accepted · Rejected · Superseded · Implemented.
 | [0015](0015-multicore-scalability.md) | Multi-core scalability audit: every serialisation point, and the order to remove them | Draft |
 | [0016](0016-rust-zig-bindings.md) | Rust and Zig language bindings: idiomatic, zero-copy-capable API shims over the C library, with native-format docs and tests | Draft |
 | [0019](0019-key-provider-and-verifier.md) | Key providers, a salted verifier, and TPM-backed key storage: remove the cleartext password from the region (PBKDF2-HMAC-SHA256 verifier), add a key-provider vtable (password/key-file/TPM 2.0), DEK/KEK key wrapping for rotation. Page cipher unchanged (AEAD is future) | Draft | Normative |
+| [0020](0020-soname-bump.md) | Bump the soname to `libdb-2026.1` for the handle-layout change (A1); the versioning rule for ABI breaks on master | Implemented | Normative |
+| [0023](0023-ssi-multilevel-conflict-detection.md) | SSI cross-leaf write-skew miss — **Withdrawn**: diagnosed as a plain bug and fixed directly (no design/format change); kept as a postmortem | Withdrawn |
+| [0024](0024-runtime-fault-injection.md) | Runtime fault injection as a DST layer: netns + tc netem, libfiu, libdirectio, libumem and FAINT on one Linux host, for single-node, HA and XA scenarios with ack-log oracles | Draft |
 
 <!-- Add a row per RFC. Keep the number 4-digit zero-padded and monotonic. -->
 

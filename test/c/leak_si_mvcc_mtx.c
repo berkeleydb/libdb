@@ -203,6 +203,16 @@ main(int argc, char *argv[])
 	env->set_errfile(env, stderr);
 	env->set_errpfx(env, "leak_si_mvcc_mtx");
 	env->set_msgcall(env, message);
+	/*
+	 * Pin the lock partitions.  The default is 10 x ncpu, and st_objects,
+	 * which sets the SIREAD sweep trigger (txn.c, SI_CLEANUP_TRIGGER_DIV),
+	 * is at least 5 x partitions.  On a 32-CPU host that is 1600 objects:
+	 * the sawtooth is so tall that CYCLES / 2 does not reach its ceiling in the
+	 * first window, the late window does, and a bounded run looked like a
+	 * leak (#274).  40 partitions is what a 4-CPU CI runner gets.
+	 */
+	if ((ret = env->set_lk_partitions(env, 40)) != 0)
+		fail("DB_ENV->set_lk_partitions", ret);
 	if ((ret = env->set_lk_detect(env, DB_LOCK_DEFAULT)) != 0)
 		fail("DB_ENV->set_lk_detect", ret);
 	if ((ret = env->open(env, HOME, DB_CREATE | DB_INIT_LOCK |

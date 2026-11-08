@@ -23,7 +23,7 @@ fn open(name: &str) -> (Env, PathBuf) {
 fn version_check_passes() {
     libdb::check_version().expect("header/library skew");
     let (maj, min, _patch) = libdb::version();
-    assert_eq!((maj, min), (2026, 0));
+    assert_eq!((maj, min), (2026, 1));
 }
 
 #[test]

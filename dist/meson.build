@@ -12,6 +12,7 @@
 # `cc` and `project()` are set by the root shim before this file is entered.
 
 root = '..'   # this file lives in dist/; project root is one level up.
+fs = import('fs')
 
 # ---------------------------------------------------------------------------
 # Platform configuration -> db_config.h (mirrors what dist/configure detects).
@@ -716,7 +717,23 @@ foreach fname, fn : clib_map
   endif
 endforeach
 
-libdb = library('db', libdb_sources, clib_sources, db_h, db_int_h, db_int_def_h, clib_port_h,
+# The library name carries the compatibility level, as the autoconf build's
+# libdb-MAJOR.MINOR.so does (dist/Makefile.in LIBVERSION), so both builds give
+# a program the same soname.  MAJOR.MINOR comes from dist/RELEASE, the single
+# source of truth (rfc/0020).
+db_release = fs.read(root / 'dist/RELEASE')
+db_compat_major = ''
+db_compat_minor = ''
+foreach line : db_release.split('\n')
+  if line.startswith('DB_VERSION_MAJOR=')
+    db_compat_major = line.split('=')[1].strip()
+  elif line.startswith('DB_VERSION_MINOR=')
+    db_compat_minor = line.split('=')[1].strip()
+  endif
+endforeach
+db_libname = 'db-@0@.@1@'.format(db_compat_major, db_compat_minor)
+
+libdb = library(db_libname, libdb_sources, clib_sources, db_h, db_int_h, db_int_def_h, clib_port_h,
   include_directories: inc,
   dependencies: [thread_dep, uring_dep, aio_dep] + tpm_deps,
   gnu_symbol_visibility: 'default',

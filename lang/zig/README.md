@@ -6,7 +6,7 @@ Idiomatic Zig bindings for libdb (the community Berkeley DB fork), per
 
 Three layers:
 
-- **Layer 0** — the C library (`db.h` + `libdb-2026.0.so`).
+- **Layer 0** — the C library (`db.h` + `libdb-2026.1.so`).
 - **Layer 1** — `shim.c`/`shim.h` (flat `libdb_<handle>_<method>` entry points so
   the C compiler resolves method-pointer offsets) + `src/consts.zig` (the frozen
   constant list) + the mirrored `DBT`.
@@ -18,7 +18,7 @@ A caller uses only Layer 2.
 ## Build & test
 
 ```sh
-export LD_LIBRARY_PATH=/usr/local/BerkeleyDB.2026.0/lib
+export LD_LIBRARY_PATH=/usr/local/BerkeleyDB.2026.1/lib
 zig build test --summary all                     # Debug
 zig build test -Doptimize=ReleaseSafe --summary all
 zig build test -Doptimize=ReleaseFast --summary all
