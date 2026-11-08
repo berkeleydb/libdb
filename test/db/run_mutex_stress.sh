@@ -19,46 +19,12 @@
 
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
-BUILD=${1:-${BUILD:-"$HERE/../../build_unix"}}
-[ -d "$BUILD" ] && BUILD=$(cd "$BUILD" && pwd)
+. "$HERE/runner_lib.sh"
+rl_default_build
 SRC=$HERE/../c/test_mutex_stress.c
 
-# Prefer the static library.  On macOS the .dylib carries a baked-in install
-# name (/usr/local/BerkeleyDB.<version>/lib/...) that takes precedence over
-# -rpath, so a binary linked against an uninstalled one is aborted by dyld
-# before main() runs.
-LIB="" ; LIBRPATH=""
-[ -f "$BUILD/libdb.a" ] && LIB="$BUILD/libdb.a"
-if [ -z "$LIB" ] ; then
-	for cand in "$BUILD"/.libs/libdb-*.so "$BUILD"/.libs/libdb-*.dylib ; do
-		[ -f "$cand" ] && { LIB="$cand" ; break ; }
-	done
-	[ -n "$LIB" ] && LIBRPATH="-Wl,-rpath,$(cd "$BUILD/.libs" && pwd)"
-fi
-[ -n "$LIB" ] || { echo "run_mutex_stress.sh: FAIL no libdb library under $BUILD" ; exit 1 ; }
-
-# timeout(1) is GNU coreutils: present on Linux, absent on stock macOS (where it
-# is gtimeout if coreutils is installed).  Without either, run unbounded rather
-# than fail with rc=127; the driver's watchdog still catches a stall that starts
-# inside its measurement window.
-if command -v timeout >/dev/null 2>&1 ; then
-	TIMEOUT_CMD=timeout
-elif command -v gtimeout >/dev/null 2>&1 ; then
-	TIMEOUT_CMD=gtimeout
-else
-	TIMEOUT_CMD=""
-fi
-run_with_timeout() {
-	if [ -n "$TIMEOUT_CMD" ] ; then
-		"$TIMEOUT_CMD" "$@"
-	else
-		shift	# drop the seconds argument
-		"$@"
-	fi
-}
-
-EXTRALIBS=""
-for l in $(pkg-config --libs liburing 2>/dev/null) ; do EXTRALIBS="$EXTRALIBS $l" ; done
+# Locate libdb (static first, for macOS dyld) and its transitive deps.
+rl_find_lib
 
 BIN=$BUILD/test_mutex_stress
 rm -f "$BIN"
