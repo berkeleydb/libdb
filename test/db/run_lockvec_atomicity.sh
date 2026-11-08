@@ -11,12 +11,11 @@
 #   * NORMAL: arms a CONFIG_TEST-only inter-element yield hook, so the vector's
 #     non-atomicity across elements is observable (scenario 1 passes) and
 #     coupling order holds (scenario 2 passes) -> PASS.
-#   * SABOTAGE (-DLOCKVEC_NO_HOOK): same lk_partitions, but the hook is NOT
-#     armed, so the real inter-element window is microseconds and the probe
-#     cannot catch it -- scenario 1's mid-vector observation fails -> the
-#     binary exits FAIL.  The runner asserts the sabotage build FAILS, which is
-#     the test's teeth: it proves the normal PASS depends on catching the
-#     real inter-element gap, not on luck.
+#   * NO-HOOK (-DLOCKVEC_NO_HOOK): same lk_partitions, hook not armed, run
+#     NOHOOK_RUNS times (default 10).  The bare window is microseconds wide,
+#     so the probe should catch it in a minority of runs; a majority would
+#     mean the normal arm's observation does not depend on the hook.
+#     Coupling order must hold in every run.
 #
 # Library discovery follows test/db/run_handle_sizes.sh.
 
@@ -47,7 +46,9 @@ if ! grep -q '^#define[[:space:]]\{1,\}CONFIG_TEST[[:space:]]\{1,\}1' "$BUILD/db
 	exit 0
 fi
 
-EXTRALIBS=""
+# Link what the library was configured with (liburing, ...), as leak-run.sh
+# does; pkg-config alone misses liburing where it has no .pc file.
+EXTRALIBS=$(sed -n 's/^LIBS=[[:space:]]*//p' "$BUILD/Makefile" 2>/dev/null | head -1)
 for l in $(pkg-config --libs liburing 2>/dev/null) ; do EXTRALIBS="$EXTRALIBS $l" ; done
 
 d=${TMPDIR:-/tmp}/lockvec_$$
@@ -82,32 +83,39 @@ echo "$nout" | grep -q 'scenario 1 (non-atomic.*A FREE during vector' || {
 	rc=1
 }
 
-# ---- SABOTAGE arm: hook NOT armed.  The real inter-element window is
-#      microseconds, so scenario 1 must observe A HELD (cannot catch the gap).
-#      This is the teeth: the SAME scenario flips from FREE to HELD purely
-#      because the hook stopped firing, proving the normal arm's "A FREE"
-#      is a genuine detection of the inter-element window, not timing luck.
-#      A change that made __lock_vec hold a lock across all elements would make
-#      even the hooked (normal) arm observe A HELD -> normal arm FAIL -> caught.
+# ---- NO-HOOK arm: same scenarios, hook not armed.  The inter-element
+#      window is real (no region mutex is held between elements), but only
+#      microseconds wide, so the probe should seldom catch it.  The arm must
+#      not demand "never": on a fast many-core host the probe does catch the
+#      bare window now and then (4 of 40 runs on a 32-vCPU c6i.8xlarge), and
+#      that is the very non-atomicity this test documents, not a defect.  It
+#      demands the hooked arm see the gap far more often than the bare
+#      window does, which shows the normal arm's FREE comes from the hook and
+#      not from luck.  The engine-side teeth are separate: a change that made
+#      __lock_vec atomic would make the hooked arm see A HELD -> FAIL.
 if ! build_one "-DLOCKVEC_NO_HOOK" "$d/sabotage" ; then
 	echo "run_lockvec_atomicity.sh: FAIL compile (sabotage)"
 	sed -n '1,5p' "$d/sabotage.cc.err" | sed 's/^/    /'
 	exit 1
 fi
-echo "-- sabotage (-DLOCKVEC_NO_HOOK, hook not armed) --"
-sout=$("$d/sabotage" 2>&1) ; src=$?
-echo "$sout" | sed 's/^/  /'
-if [ "$src" -ne 0 ] ; then
-	echo "  sabotage arm binary FAILED unexpectedly (expected A HELD/PASS)"
-	rc=1
-fi
-if echo "$sout" | grep -q 'scenario 1 (NO_HOOK): A HELD' ; then
-	echo "  teeth confirmed: without the hook the gap is NOT observable"
-	echo "  (scenario 1 flips FREE->HELD), so the normal arm's observation"
-	echo "  is a real detection of the inter-element window."
-else
-	echo "  sabotage arm OBSERVED the gap without the hook -- the normal PASS"
-	echo "  would then be timing luck, not a real observation."
+NOHOOK_RUNS=${NOHOOK_RUNS:-10}
+caught=0
+i=0
+while [ "$i" -lt "$NOHOOK_RUNS" ] ; do
+	i=$((i + 1))
+	sout=$("$d/sabotage" 2>&1)
+	echo "$sout" | grep -q 'scenario 1 (NO_HOOK): A FREE' && caught=$((caught + 1))
+	echo "$sout" | grep -q 'scenario 2 (coupling.*A HELD' || {
+		echo "  no-hook run $i: coupling order broken (A free mid-vector)"
+		rc=1
+	}
+done
+echo "-- no-hook (-DLOCKVEC_NO_HOOK): bare window caught in $caught of $NOHOOK_RUNS runs --"
+# The hooked arm caught it in its one run (checked above).  Without the hook,
+# a majority of catches would mean the hook adds nothing.
+if [ $((caught * 2)) -gt "$NOHOOK_RUNS" ] ; then
+	echo "  the bare window was caught in most runs: the hook is not what the"
+	echo "  normal arm observes, so its FREE proves nothing."
 	rc=1
 fi
 
