@@ -22,6 +22,7 @@ process. Status: Draft · Accepted · Rejected · Superseded · Implemented.
 | [0015](0015-multicore-scalability.md) | Multi-core scalability audit: every serialisation point, and the order to remove them | Draft |
 | [0016](0016-rust-zig-bindings.md) | Rust and Zig language bindings: idiomatic, zero-copy-capable API shims over the C library, with native-format docs and tests | Draft |
 | [0020](0020-soname-bump.md) | Bump the soname to `libdb-2026.1` for the handle-layout change (A1); the versioning rule for ABI breaks on master | Implemented | Normative |
+| [0021](0021-transient-cursor-cache.md) | Per-thread transient-cursor cache: reuse `DB->get`/`put`/`del` transient cursors from process-local thread state, removing the cursor-queue partition mutex from the common path (O-D1) | Draft | Normative |
 | [0023](0023-ssi-multilevel-conflict-detection.md) | SSI cross-leaf write-skew miss — **Withdrawn**: diagnosed as a plain bug and fixed directly (no design/format change); kept as a postmortem | Withdrawn |
 | [0024](0024-runtime-fault-injection.md) | Runtime fault injection as a DST layer: netns + tc netem, libfiu, libdirectio, libumem and FAINT on one Linux host, for single-node, HA and XA scenarios with ack-log oracles | Draft |
 
