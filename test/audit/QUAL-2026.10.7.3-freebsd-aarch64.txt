@@ -1,0 +1,45 @@
+# v2026.10.7.3 qualification: freebsd-aarch64 (FreeBSD 14.5-STABLE arm64)
+base: 2625d8cd Merge pull request #260 from berkeleydb/release/2026.10.7.2
+cand: d12fe79e Merge remote-tracking branch 'origin/backport/2026.10.7/lock-order-per-env' into release/2026.10.7.3
+
+## L1 region signature (default configure)
+  base: 0x56a06689
+  cand: 0x56a06689
+  L1 PASS
+
+## L2 soname, exported symbols, .text, handle sizes
+  base soname: libdb-2026.0.so
+  base exported symbols:     1848
+  base .text: 1064460
+  cand soname: libdb-2026.0.so
+  cand exported symbols:     1848
+  cand .text: 1063228
+  symbols removed:        0  added:        0
+  handle_sizes (cand): run_handle_sizes.sh: PASS
+
+## L3 fixed bugs: base / release (each test from the candidate tree)
+  run_bt_decompress_bounds: FAIL / PASS
+  run_rep_cmpvote_order (fixed must PASS, pre-fix arm must FAIL, copy matches src): PASS
+  lock_order_check base: PASS (control): lk_partitions=4 completed -- the checker did not fire on a legal schedule|PASS: lk_partitions=1 completed cleanly -- the SSI branch no longer nests TXN_SYSTEM_LOCK inside a held LOCK_SYSTEM_LOCK (regression gate on that fix)|FAIL (two-env): status 0x86 -- the checker compared mutex indices across environments|FAIL: lock_order_check|
+  lock_order_check cand: PASS (control): lk_partitions=4 completed -- the checker did not fire on a legal schedule|PASS: lk_partitions=1 completed cleanly -- the SSI branch no longer nests TXN_SYSTEM_LOCK inside a held LOCK_SYSTEM_LOCK (regression gate on that fix)|PASS (two-env): latches with the same index in two environments were not reported|PASS: lock_order_check|
+  ssi_livelock BDB3010 lines over 3 runs: base 126 / release 0
+
+## gate 1 test/db tier (release, diagnostic, compression+diagnostic)
+  cand rel: rc=1 pass=39 skip=4 fail=3
+    run_qam_extent_vrfy.sh: FAIL (rc=124)
+    rep_cmpvote_order: FAIL (12)
+    pre-fix: FAILED as required (bug reproduced)
+  cand diag: rc=1 pass=39 skip=4 fail=3
+    run_qam_extent_vrfy.sh: FAIL (rc=124)
+    rep_cmpvote_order: FAIL (12)
+    pre-fix: FAILED as required (bug reproduced)
+  cand comp: rc=1 pass=39 skip=4 fail=3
+    run_qam_extent_vrfy.sh: FAIL (rc=124)
+    rep_cmpvote_order: FAIL (12)
+    pre-fix: FAILED as required (bug reproduced)
+
+## done 2026-11-04T21:17:41Z
+
+## run_qam_extent_vrfy alone, TIMEOUT=1200, base / release
+  base: run_qam_extent_vrfy.sh: PASS in 600 s
+  cand: run_qam_extent_vrfy.sh: PASS in 601 s
