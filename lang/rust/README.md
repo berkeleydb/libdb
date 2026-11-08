@@ -82,11 +82,11 @@ libdb/       Layer 2: the safe, idiomatic API you actually use.
 
 ## Build & test
 
-Requires an installed libdb (`libdb-2026.0.so` + `db.h`). Point at it with
-`LIBDB_DIR`, else the well-known prefix `/usr/local/BerkeleyDB.2026.0` is used.
+Requires an installed libdb (`libdb-2026.1.so` + `db.h`). Point at it with
+`LIBDB_DIR`, else the well-known prefix `/usr/local/BerkeleyDB.2026.1` is used.
 
 ```sh
-export LIBDB_DIR=/usr/local/BerkeleyDB.2026.0
+export LIBDB_DIR=/usr/local/BerkeleyDB.2026.1
 export LD_LIBRARY_PATH=$LIBDB_DIR/lib
 cargo test
 cargo test --doc

@@ -257,8 +257,8 @@ public interface DbConstants
     int DB_VERB_WAITSFOR = 0x00010000;
     int DB_VERIFY = 0x00000002;
     int DB_VERSION_MAJOR = 2026;
-    int DB_VERSION_MINOR = 0;
-    int DB_VERSION_PATCH = 9;
+    int DB_VERSION_MINOR = 1;
+    int DB_VERSION_PATCH = 0;
     int DB_WRITECURSOR = 0x00000010;
     int DB_YIELDCPU = 0x00080000;
 }

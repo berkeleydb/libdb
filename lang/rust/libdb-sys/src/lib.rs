@@ -180,7 +180,7 @@ pub const DB_SNAPSHOT_UNSAFE: c_int = -30967;
 
 // --- compile-time version (from db.h at build; re-checked at run time) ------
 pub const DB_VERSION_MAJOR: c_int = 2026;
-pub const DB_VERSION_MINOR: c_int = 0;
+pub const DB_VERSION_MINOR: c_int = 1;
 
 /// The binding's constant table, as `(name, value)`, for the drift gate: it
 /// emits a C program that `#error`s if any entry disagrees with `db.h`.

@@ -241,9 +241,12 @@ meson setup "$BUILDDIR" "$ROOT" --cross-file "$CROSS" --wipe 2>/dev/null \
   || meson setup "$BUILDDIR" "$ROOT" --cross-file "$CROSS"
 ninja -C "$BUILDDIR"
 
-# The library builds under $BUILDDIR/dist/ (dist/meson.build owns library()).
-# Copy it to $BUILDDIR/libdb.so so the artifact path stays stable.
-cp "$BUILDDIR/dist/libdb.so" "$BUILDDIR/libdb.so"
+# The library builds under $BUILDDIR/dist/ as libdb-MAJOR.MINOR.so
+# (dist/meson.build, rfc/0020).  Copy it to $BUILDDIR/libdb.so so the artifact
+# path stays stable.
+_lib=$(ls "$BUILDDIR"/dist/libdb-*.so 2>/dev/null | head -1)
+[ -n "$_lib" ] || { echo "build_android.sh: no libdb-*.so under $BUILDDIR/dist" >&2; exit 1; }
+cp "$_lib" "$BUILDDIR/libdb.so"
 
 [ -n "$STRIP" ] && "$STRIP" -o "$BUILDDIR/libdb.so.stripped" \
     "$BUILDDIR/libdb.so" 2>/dev/null || true

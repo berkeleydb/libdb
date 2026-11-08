@@ -14,8 +14,10 @@ fn tmp_home(name: &str) -> PathBuf {
 #[test]
 fn version_is_sane() {
     let (a, b, _c) = libdb::version();
-    assert_eq!(a, 2026, "major should be the frozen format level 2026");
-    assert_eq!(b, 0);
+    // The compatibility level the binding is built for (rfc/0020); it must
+    // equal the compile-time db.h level the binding records.
+    assert_eq!(a, 2026);
+    assert_eq!(b, libdb_sys::DB_VERSION_MINOR);
 }
 
 #[test]

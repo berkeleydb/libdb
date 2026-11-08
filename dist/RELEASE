@@ -11,20 +11,28 @@
 DB_CALVER="2026.10.8"
 
 # ---------------------------------------------------------------------------
-# FORMAT / ABI COMPATIBILITY LEVEL -- FROZEN at 5.3.37, do NOT bump for a
-# release. These drive: the shared-region attach check (majver/minver in
-# env_region.c, a multi-process north-star invariant), the shared-object
-# soname (libdb-5.3.so via LIBVERSION), DB_VERSION_UNIQUE_NAME symbol
-# mangling (_5003), and every downstream packaging assumption. Change these
-# ONLY for a real format/ABI break, and then only with the ABI-BREAK-INTENDED
-# process -- never merely to "do a release". CalVer above is the release knob.
+# FORMAT / ABI COMPATIBILITY LEVEL (the triplet). It drives the shared-region
+# attach check (majver/minver in env_region.c), the shared-object soname
+# (libdb-MAJOR.MINOR.so via LIBVERSION), DB_VERSION_UNIQUE_NAME symbol mangling
+# (_MAJORMINOR, zero-padded), and downstream packaging. It is NOT the release
+# version: CalVer above is the release knob.
+#
+# Rule (rfc/0020, VERSIONING.md): on an LTS line it never moves. On master the
+# MINOR moves when, and only when, the public ABI breaks (a public function
+# signature, a public struct layout -- test/db/handle_sizes.c pins them -- or the
+# meaning of a flag), and then with ABI-BREAK-INTENDED. Region-only, on-disk
+# and log-format changes do not move it: the build signature and the
+# per-format version numbers gate those.
+#
+# 2026.0.9 -> 2026.1.0 (rfc/0020): sizeof(DB) 1456 -> 1744 and DBC gained a
+# field (cursor sharding, f9937fab5, KNOWN-ISSUES A1).
 # ---------------------------------------------------------------------------
 DB_VERSION_FAMILY=11
 DB_VERSION_LETTER="g"
 DB_VERSION_RELEASE=2
 DB_VERSION_MAJOR=2026
-DB_VERSION_MINOR=0
-DB_VERSION_PATCH=9
+DB_VERSION_MINOR=1
+DB_VERSION_PATCH=0
 DB_VERSION="$DB_VERSION_MAJOR.$DB_VERSION_MINOR.$DB_VERSION_PATCH"
 DB_VERSION_FULL="$DB_VERSION_FAMILY.$DB_VERSION_RELEASE.$DB_VERSION_MAJOR.$DB_VERSION_MINOR.$DB_VERSION_PATCH"
 

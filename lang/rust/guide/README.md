@@ -13,10 +13,10 @@ doc-test or an example under `../libdb/examples/`, so it cannot rot.
 
 ## Prerequisites
 
-An installed libdb (`libdb-2026.0.so` + `db.h`). Point the build at it:
+An installed libdb (`libdb-2026.1.so` + `db.h`). Point the build at it:
 
 ```sh
-export LIBDB_DIR=/usr/local/BerkeleyDB.2026.0
+export LIBDB_DIR=/usr/local/BerkeleyDB.2026.1
 export LD_LIBRARY_PATH=$LIBDB_DIR/lib
 cargo build
 ```

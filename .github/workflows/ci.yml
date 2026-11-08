@@ -762,7 +762,10 @@ jobs:
           int main(void){int a,b,c;char *s=db_version(&a,&b,&c);
             printf("libdb %s (%d.%d.%d)\n",s,a,b,c);return 0;}
           EOF
-          cc /tmp/smoke.c -Ibuild-meson/dist -Lbuild-meson/dist -ldb -o /tmp/smoke
+          # The library is libdb-<MAJOR>.<MINOR> (rfc/0020); read the level
+          # from dist/RELEASE, as dist/meson.build does, so a bump needs no edit here.
+          LVL=$(. dist/RELEASE && echo "$DB_VERSION_MAJOR.$DB_VERSION_MINOR")
+          cc /tmp/smoke.c -Ibuild-meson/dist -Lbuild-meson/dist -ldb-"$LVL" -o /tmp/smoke
           if [ "$RUNNER_OS" = "macOS" ]; then export DYLD_LIBRARY_PATH=build-meson/dist; else export LD_LIBRARY_PATH=build-meson/dist; fi
           /tmp/smoke
 
@@ -799,16 +802,20 @@ jobs:
       - name: Build and install libdb
         working-directory: build_unix
         run: |
-          ../dist/configure --prefix=/usr/local/BerkeleyDB.2026.0
+          # The install prefix follows the compatibility level in
+          # dist/RELEASE (rfc/0020), which is also the prefix the bindings
+          # probe, so a level bump needs no edit here.
+          LVL=$(. ../dist/RELEASE && echo "$DB_VERSION_MAJOR.$DB_VERSION_MINOR")
+          PREFIX=/usr/local/BerkeleyDB.$LVL
+          echo "LIBDB_DIR=$PREFIX" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$PREFIX/lib" >> "$GITHUB_ENV"
+          ../dist/configure --prefix="$PREFIX"
           make -j"$(nproc)"
           sudo make install
       - name: Rust toolchain components
         run: rustup component add clippy rustfmt || true
       - name: Rust binding -- test, doc-test, clippy, fmt, examples
         working-directory: lang/rust
-        env:
-          LIBDB_DIR: /usr/local/BerkeleyDB.2026.0
-          LD_LIBRARY_PATH: /usr/local/BerkeleyDB.2026.0/lib
         run: |
           cargo test
           cargo test --doc
@@ -825,8 +832,6 @@ jobs:
           echo /opt/zig >> "$GITHUB_PATH"
       - name: Zig binding -- test (3 modes), drift gate, examples
         working-directory: lang/zig
-        env:
-          LD_LIBRARY_PATH: /usr/local/BerkeleyDB.2026.0/lib
         run: |
           zig version
           zig fmt --check .

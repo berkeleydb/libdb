@@ -147,7 +147,16 @@ cc -O0 -I "$ACDIR" "$work/xattach.c" "$aclib" \
     -Wl,-rpath,"$ACDIR/.libs" -lpthread $URING -o "$work/xa" 2>/dev/null || {
 	echo "run_meson_autoconf_parity.sh: FAIL cannot build the autoconf probe"
 	exit 1; }
-cc -O0 -I "$MDIR/dist" "$work/xattach.c" "$MDIR/dist/libdb.so" \
+# Both builds name the library libdb-MAJOR.MINOR (rfc/0020); compare the names.
+mlib=$(ls "$MDIR"/dist/libdb-*.so 2>/dev/null | head -1)
+[ -n "$mlib" ] || { echo "run_meson_autoconf_parity.sh: FAIL no meson libdb-*.so"; exit 1; }
+acso=$(ls "$ACDIR"/.libs/libdb-*.so 2>/dev/null | head -1)
+if [ -n "$acso" ] && [ "$(basename "$acso")" != "$(basename "$mlib")" ]; then
+	echo "run_meson_autoconf_parity.sh: FAIL library names differ:" \
+	    "autoconf $(basename "$acso"), meson $(basename "$mlib")"
+	exit 1
+fi
+cc -O0 -I "$MDIR/dist" "$work/xattach.c" "$mlib" \
     -Wl,-rpath,"$MDIR/dist" -lpthread $URING -o "$work/xm" 2>/dev/null || {
 	echo "run_meson_autoconf_parity.sh: FAIL cannot build the meson probe"
 	exit 1; }
