@@ -13,7 +13,9 @@ DB_ENV->lock_vec(DB_ENV *env, u_int32_t locker, u_int32_t flags,
     DB_LOCKREQ list[], int nlist, DB_LOCKREQ **elistp);  
 ```
 
-The `DB_ENV->lock_vec()` method atomically obtains and releases one or more locks from the lock table. The `DB_ENV->lock_vec()` method is intended to support acquisition or trading of multiple locks under one lock table semaphore, as is needed for lock coupling or in multigranularity locking for lock escalation.
+The `DB_ENV->lock_vec()` method obtains and releases one or more locks from the lock table, in the order they appear in **list**. It is intended for lock coupling (acquire the next lock, then release the previous one) and for trading locks in multigranularity locking.
+
+The requests are performed **in order, but not atomically**. Another thread or process can acquire or release locks between two elements of the vector: the lock table is partitioned and no single mutex covers the whole call, and a request that has to wait releases the lock table while it waits. Lock coupling still works, because each request completes before the next one starts. Do not rely on the whole vector taking effect as one indivisible step.
 
 If any of the requested locks cannot be acquired, or any of the locks to be released cannot be released, the operations before the failing operation are guaranteed to have completed successfully, and `DB_ENV->lock_vec()` returns a non-zero value. In addition, if **elistp** is not NULL, it is set to point to the DB_LOCKREQ entry that was being processed when the error occurred.
 
