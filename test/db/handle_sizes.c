@@ -17,15 +17,13 @@
  * once, in one commit, between two releases is invisible to every later
  * comparison, and nothing compares across the whole fork.
  *
- * The decision taken (A1 option (b)) is that handle structs are INTERNAL: they
- * are allocated inside the library (db_create does
- * __os_calloc(env, 1, sizeof(*dbp))) and db.in has zero by-value DB/DBC members
- * in any public struct, so no application allocates or embeds one and the soname
- * tracks only the exported-function ABI.  That decision is only safe if a size
- * change is DELIBERATE, which is what this asserts: the numbers below are the
- * recorded sizes, and changing one requires editing this file in the same commit
- * that changes the layout.  That puts the decision in the diff instead of in a
- * release note six weeks later.
+ * The decision taken (rfc/0020, review decision Q6) is option (a): a public
+ * handle layout change moves the compatibility level, and so the soname
+ * (libdb-MAJOR.MINOR).  The recorded sizes below therefore belong to ONE level,
+ * RECORDED_MAJOR.RECORDED_MINOR.  A size change in a build still at that level
+ * is an ABI break shipped under an unchanged soname, and FAILs.  The fix is to
+ * bump DB_VERSION_MINOR in dist/RELEASE (ABI-BREAK-INTENDED) and record the new
+ * sizes and level here in the same commit.
  *
  * Sizes are per-ABI, so they are recorded for LP64 only and the test SKIPs
  * elsewhere rather than asserting numbers it cannot know.  A 32-bit or Windows
@@ -43,6 +41,10 @@ struct rec {
 	size_t		 actual;
 	size_t		 expect;
 };
+
+/* The compatibility level the sizes below were recorded at (rfc/0020). */
+#define	RECORDED_MAJOR	2026
+#define	RECORDED_MINOR	1
 
 int
 main(int argc, char **argv)
@@ -80,6 +82,15 @@ main(int argc, char **argv)
 		return (0);
 	}
 
+	if (DB_VERSION_MAJOR != RECORDED_MAJOR ||
+	    DB_VERSION_MINOR != RECORDED_MINOR) {
+		printf("VERDICT handle_sizes FAIL db.h is level %d.%d but the "
+		    "sizes were recorded at %d.%d: re-record them for the new "
+		    "level in this file\n", DB_VERSION_MAJOR, DB_VERSION_MINOR,
+		    RECORDED_MAJOR, RECORDED_MINOR);
+		return (1);
+	}
+
 	for (i = 0; i < n; i++) {
 		printf("  %-8s actual=%4zu expect=%4zu %s\n",
 		    r[i].name, r[i].actual, r[i].expect,
@@ -96,18 +107,11 @@ main(int argc, char **argv)
 
 	printf("VERDICT handle_sizes FAIL %d handle size(s) changed\n", bad);
 	printf("\n");
-	printf("A public handle struct changed size.  This is not automatically\n");
-	printf("wrong -- these structs are library-allocated and opaque (A1) --\n");
-	printf("but it IS a decision, so make it explicitly:\n");
-	printf("\n");
-	printf("  1. Confirm nothing embeds or allocates the struct outside the\n");
-	printf("     library:  grep the tree for by-value members in db.in, and\n");
-	printf("     check the struct is still only reached through a pointer.\n");
-	printf("  2. Confirm the region layout is unaffected, or bump\n");
-	printf("     DB_REGION_MAJOR/MINOR -- __env_struct_sig() is a separate\n");
-	printf("     gate from this one.\n");
-	printf("  3. Update the expected value in test/db/handle_sizes.c IN THIS\n");
-	printf("     COMMIT, so the size change appears in the diff that caused\n");
-	printf("     it rather than in a later release note.\n");
+	printf("A public handle struct changed size at compatibility level\n");
+	printf("%d.%d, so the soname would not change.  That is the A1 defect.\n",
+	    RECORDED_MAJOR, RECORDED_MINOR);
+	printf("Bump DB_VERSION_MINOR in dist/RELEASE (ABI-BREAK-INTENDED,\n");
+	printf("rfc/0020), regenerate (dist/s_config etc.), and record the new\n");
+	printf("sizes and RECORDED_MINOR here in the same commit.\n");
 	return (1);
 }
