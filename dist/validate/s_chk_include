@@ -29,6 +29,7 @@ sed -e '/^build/d' \
     -e '/^dbinc\/win_db.h:/d' \
     -e '/^mutex\/tm.c/d' \
     -e '/^os\/os_map.c.*<sys\/mman.h>/d' \
+    -e '/^crypto\/aes_method.c.*<sys\/mman.h>/d' \
     > $t2
 
 [ -s $t2 ] && {

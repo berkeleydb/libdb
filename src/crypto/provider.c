@@ -18,9 +18,7 @@
 #include "dbinc/crypto.h"
 
 #ifndef DB_WIN32
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
+/* <sys/stat.h>, <fcntl.h> and <unistd.h> come from db_int.h. */
 #ifndef O_NOFOLLOW
 #define	O_NOFOLLOW	0	/* pre-POSIX.1-2008: fstat checks still apply */
 #endif
