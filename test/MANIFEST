@@ -482,6 +482,7 @@ shape	gate	optional
 # build matrix (config == default).  Each script prints "<name>: PASS|FAIL".
 # ---------------------------------------------------------------------------
 db	run_hash_unsorted_cmp
+db	run_hash_split_leak
 db	run_recd_compact
 db	run_recd_handlers
 db	run_upgrade
