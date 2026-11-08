@@ -31,6 +31,9 @@ static int  __bam_getboth_finddatum __P((DBC *, DBT *, u_int32_t));
 static int  __bam_getbothc __P((DBC *, DBT *));
 static int  __bam_get_prev __P((DBC *));
 static int  __bam_isopd __P((DBC *, db_pgno_t *));
+static int  __bam_dup_alldeleted __P((DBC *, DBT *, int *));
+static int  __bam_dup_rekey __P((DBC *, DBT *));
+static int  __bam_rekey_slot __P((DBC *, DBT *));
 #ifdef HAVE_COMPRESSION
 static int  __bam_getlte __P((DBC *, DBT *, DBT *));
 #endif
@@ -2086,7 +2089,7 @@ __bamc_put(dbc, key, data, flags, pgnop)
 	DBT dbt;
 	DB_MPOOLFILE *mpf;
 	db_pgno_t root_pgno;
-	int cmp, exact, own, ret, stack;
+	int cmp, exact, gone, own, ret, stack;
 	u_int32_t iiop;
 	void *arg;
 
@@ -2194,6 +2197,54 @@ split:	ret = stack = 0;
 		}
 
 		/*
+		 * R2 (finishes R1): a put of a key the comparator calls equal
+		 * to an existing duplicate set whose members are ALL deleted --
+		 * the set is kept only because a cursor pins it -- must store the
+		 * caller's key bytes, not the dead set's, exactly as it does when
+		 * no cursor pins the set (the set is then reaped before the
+		 * search, so the put inserts fresh).  While any member is live the
+		 * set's key stays (the documented shared-key semantics).  R1
+		 * handles the non-dup slot in __bam_iitem.
+		 *
+		 * The members of a set share ONE physical key item (every slot's
+		 * inp[] points at it), so rewriting that one item in place changes
+		 * the key for the whole set at once; the new member then joins by
+		 * the ordinary duplicate path and the set stays a single set.
+		 * (The earlier redirect-to-fresh-insert approach made the new
+		 * member a SEPARATE key item next to the dead set, so a second
+		 * equal-key put found the dead set again and split off yet another
+		 * item -- two non-dup "equal" keys, which DB->verify rejects.)
+		 *
+		 * __bam_dup_rekey rewrites the shared/off-page key when the shape
+		 * permits a safe in-place rewrite; it is a no-op (leaving the old
+		 * bytes, the pre-R2 behaviour, which is still a valid single set)
+		 * for a shape that cannot be rewritten safely.  Either way we then
+		 * fall through to the normal duplicate path, so the result is one
+		 * set.  A key that grows past the page returns DB_NEEDSPLIT, which
+		 * the retry below catches exactly as it does for __bam_iitem.
+		 */
+		if (key != NULL &&
+		    (ret = __bam_dup_alldeleted(dbc, key, &gone)) != 0)
+			goto err;
+#ifdef R2_REVIVE_SABOTAGE
+		gone = 0;	/* test teeth: disable the R2 rekey. */
+#endif
+		if (key != NULL && gone &&
+		    (ret = __bam_dup_rekey(dbc, key)) != 0) {
+			if (ret != DB_NEEDSPLIT)
+				goto err;
+			/*
+			 * The rekeyed (growing) key does not fit: split on the
+			 * caller's key and retry the whole put from the top, as
+			 * __bam_iitem's DB_NEEDSPLIT does.  We are on a
+			 * KEYFIRST/KEYLAST-class flag here, so the split key is
+			 * the caller's key.
+			 */
+			arg = F_ISSET(dbc, DBC_OPD) ? data : key;
+			goto split_tree;
+		}
+
+		/*
 		 * If we find a matching entry, it may be an off-page duplicate
 		 * tree.  Return the page number to our caller, we need a new
 		 * cursor.
@@ -2272,6 +2323,7 @@ split:	ret = stack = 0;
 		} else
 			arg = F_ISSET(dbc, DBC_OPD) ? data : key;
 
+split_tree:
 		/*
 		 * Discard any locks and pinned pages (the locks are discarded
 		 * even if we're running with transactions, as they lock pages
@@ -3059,6 +3111,306 @@ __bam_isopd(dbc, pgnop)
 	}
 	return (0);
 }
+
+/*
+ * __bam_opd_alldel --
+ *	Walk an off-page duplicate tree from its root; set *allp if every data
+ *	item in it is deleted (so the set is logically gone but kept because a
+ *	cursor pins it).  An empty tree counts as all-deleted.  Short-circuits
+ *	at the first live item, so a set with live members costs one page.
+ */
+static int
+__bam_opd_alldel(dbc, root, allp)
+	DBC *dbc;
+	db_pgno_t root;
+	int *allp;
+{
+	DB *dbp;
+	DB_MPOOLFILE *mpf;
+	PAGE *h;
+	db_indx_t i;
+	db_pgno_t pgno;
+	int ret, t_ret;
+
+	dbp = dbc->dbp;
+	mpf = dbp->mpf;
+	*allp = 1;
+
+	/* Descend to the leftmost leaf, then follow the leaf chain. */
+	for (pgno = root;;) {
+		if ((ret = __memp_fget(mpf, &pgno,
+		    dbc->thread_info, dbc->txn, 0, &h)) != 0)
+			return (ret);
+		if (TYPE(h) == P_IBTREE)
+			pgno = GET_BINTERNAL(dbp, h, 0)->pgno;
+		else if (TYPE(h) == P_IRECNO)
+			pgno = GET_RINTERNAL(dbp, h, 0)->pgno;
+		else
+			break;
+		if ((ret = __memp_fput(mpf,
+		    dbc->thread_info, h, dbc->priority)) != 0)
+			return (ret);
+	}
+	for (;;) {
+		for (i = 0; i < NUM_ENT(h); i += O_INDX)
+			if (!B_DISSET(GET_BKEYDATA(dbp, h, i)->type)) {
+				*allp = 0;
+				break;
+			}
+		pgno = *allp ? NEXT_PGNO(h) : PGNO_INVALID;
+		if ((t_ret = __memp_fput(mpf,
+		    dbc->thread_info, h, dbc->priority)) != 0)
+			return (t_ret);
+		if (pgno == PGNO_INVALID)
+			return (0);
+		if ((ret = __memp_fget(mpf, &pgno,
+		    dbc->thread_info, dbc->txn, 0, &h)) != 0)
+			return (ret);
+	}
+}
+
+/*
+ * __bam_dup_alldeleted --
+ *	Set *gonep if the cursor's matched key is the key of a duplicate set
+ *	whose members are ALL deleted AND whose stored key bytes differ from
+ *	key (R2, finishing R1).  Such a set is kept only because a cursor pins
+ *	it; an equal-key put must then store the caller's bytes, as it does
+ *	when no cursor pins the set.  While any member is live, or the stored
+ *	key already equals key byte for byte, *gonep stays 0 and the normal
+ *	shared-key duplicate paths run.
+ *
+ *	Handles both an on-page set (slots sharing inp[indx]) and an off-page
+ *	duplicate tree (a B_DUPLICATE item whose tree is walked).
+ */
+static int
+__bam_dup_alldeleted(dbc, key, gonep)
+	DBC *dbc;
+	DBT *key;
+	int *gonep;
+{
+	BKEYDATA *bk;
+	BOVERFLOW *bo;
+	BTREE_CURSOR *cp;
+	DB *dbp;
+	PAGE *h;
+	db_indx_t indx, *inp;
+	int all, cmp, ret;
+
+	dbp = dbc->dbp;
+	cp = (BTREE_CURSOR *)dbc->internal;
+	h = cp->page;
+	indx = cp->indx;
+	*gonep = 0;
+
+	if (TYPE(h) != P_LBTREE)
+		return (0);
+
+	/*
+	 * The stored key: byte-compare it against the caller's key.  If the
+	 * bytes are identical this is the ordinary equal-key case, nothing to
+	 * do.  memcmp a keydata item, __db_moff (NULL func = byte compare) an
+	 * overflow one.  A zero-length key may carry NULL data, so guard it.
+	 */
+	bk = GET_BKEYDATA(dbp, h, indx);
+	if (B_TYPE(bk->type) == B_KEYDATA) {
+		if (bk->len == key->size && (key->size == 0 ||
+		    memcmp(bk->data, key->data, key->size) == 0))
+			return (0);
+	} else {
+		bo = (BOVERFLOW *)bk;
+		if (bo->tlen == key->size) {
+			if ((ret = __db_moff(dbc,
+			    key, bo->pgno, bo->tlen, NULL, &cmp)) != 0)
+				return (ret);
+			if (cmp == 0)
+				return (0);
+		}
+	}
+
+	/*
+	 * Off-page duplicates: the data slot is a B_DUPLICATE pointing at the
+	 * tree root.  The tree holds data only; the key is this parent slot.
+	 */
+	bo = GET_BOVERFLOW(dbp, h, indx + O_INDX);
+	if (B_TYPE(bo->type) == B_DUPLICATE) {
+		if ((ret = __bam_opd_alldel(dbc, bo->pgno, &all)) != 0)
+			return (ret);
+		*gonep = all;
+		return (0);
+	}
+
+	/*
+	 * On-page set: the members all share this key item (equal inp[]).
+	 * Walk the run of slots sharing inp[indx] in both directions; the set
+	 * is gone only if every member's data item is deleted.
+	 */
+	inp = P_INP(dbp, h);
+	for (; indx > 0 && inp[indx - P_INDX] == inp[cp->indx];
+	    indx -= P_INDX)
+		;
+	for (all = 1; indx < NUM_ENT(h) && inp[indx] == inp[cp->indx];
+	    indx += P_INDX)
+		if (!B_DISSET(GET_BKEYDATA(dbp, h, indx + O_INDX)->type)) {
+			all = 0;
+			break;
+		}
+	*gonep = all;
+	return (0);
+}
+
+/*
+ * __bam_dup_rekey --
+ *	Rewrite the key of the cursor's matched duplicate set (all of whose
+ *	members are deleted -- __bam_dup_alldeleted said so) to the caller's
+ *	key bytes, so the whole set adopts the new key and the member about to
+ *	be put joins it by the ordinary duplicate path.  The members share ONE
+ *	physical key item, so a single in-place rewrite moves the key for every
+ *	member at once: __bam_ritem replaces the item and re-aims every inp[]
+ *	offset that referenced it (including each sharing slot), and its
+ *	__bam_repl log record replays the same way.
+ *
+ *	Handles:
+ *	  - an on-page set whose key is a non-overflow item, growing or
+ *	    shrinking (DB_NEEDSPLIT if a growing key will not fit -- the caller
+ *	    splits and retries, exactly as for __bam_iitem);
+ *	  - an off-page duplicate tree, whose key is a lone slot in this leaf
+ *	    (not shared), rewritten by delete-and-re-add as R1 does for a
+ *	    non-dup slot, which also handles overflow keys and type changes.
+ *
+ *	An on-page set whose shared key is an OVERFLOW item is left unchanged
+ *	(there is no logged in-place rewrite that keeps the shared on-page
+ *	offset for an overflow item): the put then joins the set under the old
+ *	key bytes -- the pre-R2 behaviour, which is a single valid set, not
+ *	corruption.  KNOWN-ISSUES records this narrow residual.
+ */
+static int
+__bam_dup_rekey(dbc, key)
+	DBC *dbc;
+	DBT *key;
+{
+	BKEYDATA *bk;
+	BOVERFLOW *bop;
+	BTREE_CURSOR *cp;
+	DB *dbp;
+	PAGE *h;
+	db_indx_t indx;
+	u_int32_t have, need;
+	int bigkey, ret;
+
+	dbp = dbc->dbp;
+	cp = (BTREE_CURSOR *)dbc->internal;
+	h = cp->page;
+	indx = cp->indx;
+
+	if (TYPE(h) != P_LBTREE)
+		return (0);
+
+	/* Off-page: the B_DUPLICATE data slot flags a lone (unshared) key. */
+	bop = GET_BOVERFLOW(dbp, h, indx + O_INDX);
+	if (B_TYPE(bop->type) == B_DUPLICATE)
+		return (__bam_rekey_slot(dbc, key));
+
+	/* On-page set: the members share the key item at inp[indx]. */
+	bk = GET_BKEYDATA(dbp, h, indx);
+	if (B_TYPE(bk->type) != B_KEYDATA)
+		return (0);	/* Overflow shared key: leave it (see above). */
+
+	bigkey = key->size > cp->ovflsize;
+	if (bigkey)
+		return (0);	/* Would become overflow: leave it (see above). */
+
+	/* A growing key must fit; otherwise split and retry. */
+	have = BKEYDATA_PSIZE(bk->len);
+	need = BKEYDATA_PSIZE(key->size);
+	if (need > have && P_FREESPACE(dbp, h) < need - have)
+		return (DB_NEEDSPLIT);
+
+	if ((ret = __memp_dirty(dbp->mpf, &cp->page,
+	    dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
+		return (ret);
+	if (cp->csp->page == h)
+		cp->csp->page = cp->page;
+	h = cp->page;
+
+	/*
+	 * Rewrite the shared key in place.  __bam_ritem preserves the item's
+	 * B_DISSET state, but a key item is never deleted (only its data
+	 * slots are), so the set's deleted members stay deleted and the
+	 * pinning cursor still sees them as deleted.
+	 */
+	return (__bam_ritem(dbc, h, indx, key, 0));
+}
+
+/*
+ * __bam_rekey_slot --
+ *	Rewrite the key item at the cursor's current slot (a lone, unshared
+ *	key -- the off-page-duplicate parent slot) to the caller's bytes by
+ *	delete-and-re-add, as R1 does for a non-dup revive.  Handles overflow
+ *	keys and non-overflow<->overflow transitions.  DB_NEEDSPLIT if a
+ *	growing key will not fit.
+ *
+ *	The data slot (indx + O_INDX) is a B_DUPLICATE pointer and is left
+ *	untouched; only the key half of the pair is replaced.
+ */
+static int
+__bam_rekey_slot(dbc, key)
+	DBC *dbc;
+	DBT *key;
+{
+	BKEYDATA *bk;
+	BOVERFLOW bo;
+	BTREE_CURSOR *cp;
+	DB *dbp;
+	DBT bk_hdr;
+	PAGE *h;
+	db_indx_t indx;
+	u_int32_t have, need;
+	int bigkey, ret;
+
+	dbp = dbc->dbp;
+	cp = (BTREE_CURSOR *)dbc->internal;
+	h = cp->page;
+	indx = cp->indx;
+
+	bk = GET_BKEYDATA(dbp, h, indx);
+	bigkey = key->size > cp->ovflsize;
+	have = B_TYPE(bk->type) == B_KEYDATA ?
+	    BKEYDATA_PSIZE(bk->len) : BOVERFLOW_PSIZE;
+	need = bigkey ? BOVERFLOW_PSIZE : BKEYDATA_PSIZE(key->size);
+	if (need > have && P_FREESPACE(dbp, h) < need - have)
+		return (DB_NEEDSPLIT);
+
+	if ((ret = __memp_dirty(dbp->mpf, &cp->page,
+	    dbc->thread_info, dbc->txn, dbc->priority, 0)) != 0)
+		return (ret);
+	if (cp->csp->page == h)
+		cp->csp->page = cp->page;
+	h = cp->page;
+
+	/*
+	 * Delete and re-add the key item in the same slot, as R1's DB_CURRENT
+	 * revive does: an overflow key's new chain is written first (the step
+	 * that can fail for want of a page), so a failure before the old key
+	 * is gone leaves the page whole.  No cursor adjustment is needed -- we
+	 * re-add into the same slot.
+	 */
+	memset(&bk_hdr, 0, sizeof(bk_hdr));
+	if (bigkey) {
+		memset(&bo, 0, sizeof(bo));
+		B_TSET(bo.type, B_OVERFLOW);
+		if ((ret = __db_poff(dbc, key, &bo.pgno)) != 0)
+			return (ret);
+		bo.tlen = key->size;
+		bk_hdr.data = &bo;
+		bk_hdr.size = BOVERFLOW_SIZE;
+	}
+	if ((ret = __bam_ditem(dbc, h, indx)) != 0)
+		return (ret);
+	return (bigkey ?
+	    __db_pitem(dbc, h, indx, BOVERFLOW_SIZE, &bk_hdr, NULL) :
+	    __db_pitem(dbc, h, indx, BKEYDATA_SIZE(key->size), NULL, key));
+}
+
 
 /*
  * __bam_opd_exists --

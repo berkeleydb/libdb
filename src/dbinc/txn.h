@@ -238,6 +238,7 @@ struct __db_txnregion { /* SHARED */
 	u_int32_t	last_txnid;	/* last transaction id given out */
 	u_int32_t	cur_maxid;	/* current max unused id. */
 
+
 	db_mutex_t	mtx_ckp;	/* Single thread checkpoints. */
 	DB_LSN		last_ckp;	/* lsn of the last checkpoint */
 	time_t		time_ckp;	/* time of last checkpoint */
@@ -275,6 +276,26 @@ struct __db_txnregion { /* SHARED */
 					/* S5: free list of recycled details. */
 	SH_TAILQ_HEAD(__tdfree) free_txn;
 };
+
+/*
+ * TXN_SI_CONCURRENT --
+ *	SSI: TRUE when a committed reader R (detail rtd) is concurrent with a
+ *	writer W (detail wtd) for an rw-antidependency R --rw--> W: R committed
+ *	strictly after W took its snapshot, visible_lsn(R) > read_lsn(W).
+ *
+ *	Strict, on purpose.  read_lsn is assigned lazily at first page access
+ *	and an aborting SSI txn writes no log record, so under retry pressure
+ *	the log end stops moving and a committed reader's visible_lsn equals
+ *	every new writer's read_lsn.  An inclusive test (">=") turned each such
+ *	tie into an edge and livelocked SSI (#257: 22 commits vs 482k UNSAFE
+ *	aborts).  The genuine concurrent pair that a strict test used to miss
+ *	at equality -- R reads the page after W already write-locked and
+ *	scanned it -- is caught from the other side by the reader-side scan
+ *	__lock_si_rconflict, so no edge depends on the equality case.  The
+ *	caller handles R still RUNNING separately.
+ */
+#define	TXN_SI_CONCURRENT(rtd, wtd)					\
+	(LOG_COMPARE(&(rtd)->visible_lsn, &(wtd)->read_lsn) > 0)
 
 /*
  * DB_COMMIT_INFO --

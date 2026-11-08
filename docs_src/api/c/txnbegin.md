@@ -97,6 +97,21 @@ The **flags** parameter must be set to 0 or by bitwise inclusively **OR**'ing to
 
   > **Fixed after 5.3.34.** Release 5.3.34 had two defects affecting serializable snapshot isolation, both now fixed: a write skew could commit when the second transaction's write landed while the first was inside <a href="txncommit.md" class="xref" title="DB_TXN-&gt;commit()">DB_TXN-&gt;commit()</a> (issue #136), and long-lived environments running many serializable transactions could exhaust the mutex region with `ENOMEM` because reader bookkeeping was not fully reclaimed (issues #137, #138). Each fix is covered by a regression test that runs in continuous integration.
 
+  **Retrying an aborted serializable transaction.** Treat `DB_SNAPSHOT_CONFLICT` and `DB_SNAPSHOT_UNSAFE` exactly as you treat `DB_LOCK_DEADLOCK`: abort the transaction and re-run the whole transaction (reads included) from the start. The second attempt sees a newer snapshot and usually succeeds; use bounded retries with a short backoff. Do not retry only the failing operation — the snapshot the transaction read from is stale, so the entire unit of work must be replayed.
+
+  > **A fixed serializability defect (cross-leaf write skew).** Through v5.3.34
+  > and until this fix, `DB_TXN_SERIALIZABLE` could *miss* a write skew between
+  > records on different leaf pages of a multi-level B-tree and let a
+  > non-serializable history commit silently — no error returned. The cause was
+  > a page-granularity bug in the SSI conflict scan (a transaction dropped its
+  > own SIREAD marker when it write-locked a page it had only read a different
+  > key on). It is now fixed and guarded by a regression test
+  > (`test/isolation/ssi_multiread_skew`), so `DB_TXN_SERIALIZABLE` prevents the
+  > skew at every B-tree depth. Serializable isolation on **Hash** remains less
+  > thoroughly qualified than on B-tree.
+
+  > **Interaction with the optimistic-read fast path (RFC 0007).** The pin-free optimistic B-tree descent (RFC 0007) is **disabled for databases opened `DB_MULTIVERSION`**, and MVCC is required for any snapshot or serializable transaction. A `DB_TXN_SNAPSHOT` or `DB_TXN_SERIALIZABLE` transaction therefore always takes the ordinary pin-and-latch descent and gains none of the optimistic-read speedup. This is by design (the optimistic path cannot observe the version chain), not a defect; it is noted so the performance trade-off of enabling MVCC is explicit.
+
 - `DB_TXN_SYNC`
 
   Synchronously flush the log when this transaction commits or prepares. This means the transaction will exhibit all of the ACID (atomicity, consistency, isolation, and durability) properties.
