@@ -15,8 +15,8 @@
  *
  * SPINS=0 keeps the library default (50 x ncpu).  Prints one line:
  *   SPINLAT threads=.. spins=.. cs_ns=.. think_ns=.. acq_per_s=..
- * The spin policy itself is selected by the library's runtime switches
- * (DB_MUTEX_SPIN_LEGACY, DB_MUTEX_BACKOFF), read from the environment.
+ * The spin budget is the library default or the SPINS argument; the spin loop
+ * itself is the fixed one-pause-per-poll historical loop.
  */
 #include <sys/types.h>
 
