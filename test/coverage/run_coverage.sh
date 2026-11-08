@@ -405,10 +405,10 @@ export CFLAGS="${CFLAGS:-} --coverage"
 
 if [ "${COV_XA_UPG:-1}" = 1 ]; then
   phase xa+upgrade
-  if sh "$root/test/xa/run_xa_direct.sh" >$COVLOG/xa.log 2>&1; then
-    echo "PASS xa_direct"
+  if sh "$root/test/db/run_xa.sh" >$COVLOG/xa.log 2>&1; then
+    echo "PASS xa"
   else
-    echo "FAIL xa_direct (rc=$?)"; tail -5 $COVLOG/xa.log
+    echo "FAIL xa (rc=$?)"; tail -5 $COVLOG/xa.log
   fi
   if sh "$root/test/db/run_upgrade.sh" >$COVLOG/upg.log 2>&1; then
     echo "PASS db_upgrade"

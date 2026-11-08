@@ -368,21 +368,22 @@ $DEADREG2_TESTS" ;;
   misc)
     # XA, on-disk upgrade, os_aio, backup, compaction-recovery, hash-unsorted.
     #
-    # These run FROM build_unix, not from a group directory, because each one
-    # compiles its driver from a path spelled "../test/xa/xa_direct.c" -- i.e.
-    # relative to build_unix.  Measured: from a group dir they all died with
+    # These run FROM build_unix, not from a group directory.  run_xa.sh
+    # anchors its sources to the script's own directory, but the others still
+    # compile a driver from a path spelled "../test/xa/..." -- i.e. relative to
+    # build_unix.  Measured (before run_xa.sh): from a group dir they died with
     # "cc1: fatal error: ../test/xa/xa_direct.c: No such file or directory", the
     # group produced zero .gcda, and the PRODUCED-NO-GCDA guard aborted the run.
     #
     # That is safe here, unlike for the Tcl groups: each of these drivers uses
-    # its OWN home directory (XA_TESTDIR, OSAIO_TESTDIR, BACKUP_TESTDIR, ...),
-    # never the shared build_unix/TESTDIR, so running in build_unix collides with
+    # its OWN home directory (the XA harness uses XA_MATRIX_RM1/RM2 and
+    # XA_RECOVER_HOME, OSAIO_TESTDIR, BACKUP_TESTDIR, ...), never the shared build_unix/TESTDIR, so running in build_unix collides with
     # nothing the other groups touch.  Their .gcda still land under this group's
     # GCOV_PREFIX, which is what keeps the counts separate.
     : > "$log"
     CFLAGS="${CFLAGS:-} --coverage"; export CFLAGS
     cd "$bld"
-    for sc in xa/run_xa_direct.sh db/run_upgrade.sh os/run_os_aio.sh \
+    for sc in db/run_xa.sh db/run_upgrade.sh os/run_os_aio.sh \
              backup/run_backup_direct.sh db/run_recd_compact.sh \
              db/run_recd_handlers.sh db/run_hash_unsorted_cmp.sh; do
       BUILD=. sh "$root/test/$sc" >>"$log" 2>&1 \
