@@ -34,6 +34,13 @@ WORK=${WORK:-REPMGR_TLS_TESTDIR}
 MPORT=${MPORT:-6210}
 CPORT=${CPORT:-6211}
 
+# The capture is an LD_PRELOAD send/recv shim.  macOS ignores LD_PRELOAD (and
+# SIP strips DYLD_INSERT_LIBRARIES from system binaries), so the capture there
+# is always empty and the plaintext arm would fail without proving anything.
+case "$(uname -s)" in
+Darwin) echo "run_repmgr_tls_wirecap.sh: SKIP the LD_PRELOAD wire capture does not work on macOS"; exit 0;;
+esac
+
 # Pick the library the other db-tier suites use.
 LIB=""
 LIBRPATH=""

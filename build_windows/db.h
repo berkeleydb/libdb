@@ -1103,6 +1103,11 @@ struct __db_txn_token {
 #define	DB_REPMGR_ACKS_ONE_PEER		6
 #define	DB_REPMGR_ACKS_QUORUM		7
 
+/* repmgr_set_tls() flags (RFC 0018). */
+#define	DB_REPMGR_TLS_VERIFY_PEER	0x00000001 /* Verify peer cert (default). */
+#define	DB_REPMGR_TLS_NO_VERIFY		0x00000002 /* Disable verification. */
+#define	DB_REPMGR_TLS_REQUIRE		0x00000004 /* Refuse plaintext peers. */
+
 /* Replication timeout configuration values. */
 #define	DB_REP_ACK_TIMEOUT		1	/* RepMgr acknowledgements. */
 #define	DB_REP_CHECKPOINT_DELAY		2	/* Master checkpoint delay. */
@@ -2753,6 +2758,8 @@ struct __db_env {
 		void (*)(DB_ENV *, DB_CHANNEL *, DBT *, u_int32_t, u_int32_t),
 		u_int32_t));
 	int  (*repmgr_set_ack_policy) __P((DB_ENV *, int));
+	int  (*repmgr_set_tls) __P((DB_ENV *,
+		const char *, const char *, const char *, u_int32_t));
 	int  (*repmgr_site)
 		__P((DB_ENV *, const char *, u_int, DB_SITE**, u_int32_t));
 	int  (*repmgr_site_by_eid) __P((DB_ENV *, int, DB_SITE**));
