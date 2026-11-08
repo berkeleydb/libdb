@@ -27,7 +27,7 @@ fn tempHome(a: std.mem.Allocator) ![:0]u8 {
 test "version is sane and header matches runtime" {
     const v = libdb.version();
     try std.testing.expectEqual(@as(i32, 2026), v.major);
-    try std.testing.expectEqual(@as(i32, 0), v.minor);
+    try std.testing.expectEqual(@as(i32, 1), v.minor);
     try libdb.checkVersion();
 }
 

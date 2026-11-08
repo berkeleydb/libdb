@@ -95,6 +95,26 @@ isolation	ssi_gc_pressure@serializable-default
 isolation	ssi_gc_pressure@serializable-1
 isolation	ssi_crash_pivot-default	optional
 isolation	ssi_crash_pivot-1	optional
+# Adya cycle checker, multi-leaf default (CYC_VALPAD=200): the gate that closes
+# the second write-skew miss (boundary fix + grant-path scans).  GATING for
+# btree at the default partition count.  parts=1 is advisory (a separate pre-
+# existing checker-HARNESS crash under the single-partition tier run; the engine
+# is verified serializable at parts=1 standalone, and the parts=1 engine path is
+# hard-gated by test_iso_anomaly + ssi_multiread_skew).  Hash is advisory too
+# (separate pre-existing concurrent-MVCC hang; Hash SSI is gated by ssi006).
+isolation	ssi_cycle_btree-default
+isolation	ssi_cycle_btree-1	optional
+isolation	ssi_cycle_hash-default	optional
+# ssi_multiread_skew is the regression gate for the cross-leaf write-skew fix
+# (SSI keeps its own SIREAD marker instead of dropping it on a same-page write
+# lock).  It FAILed on every pre-fix build and must now PASS.
+isolation	ssi_multiread_skew-default
+isolation	ssi_multiread_skew-1
+# ssi_livelock: SSI must commit >= 50% of plain SI on the same pure-SSI
+# workload (the #257 inclusive edge test committed ~0.5% and passed every
+# correctness gate).
+isolation	ssi_livelock-default
+isolation	ssi_livelock-1
 # The two SSI mechanism gates.  ssi_gc_pressure runs at both levels (the
 # snapshot pass is the anti-vacuity control).  ssi_crash_pivot needs a
 # DIAGNOSTIC build for its in-commit crash hook, so it is optional -- but the
@@ -462,10 +482,15 @@ shape	gate	optional
 # build matrix (config == default).  Each script prints "<name>: PASS|FAIL".
 # ---------------------------------------------------------------------------
 db	run_hash_unsorted_cmp
+db	run_crypto_iv_unpredictable
+db	run_hash_split_leak
 db	run_recd_compact
 db	run_recd_handlers
 db	run_upgrade
 db	run_lock_priority_nullderef
+db	run_lockvec_atomicity
+db	run_lock_region_layout
+db	run_lock_stripe_exhaustion
 db	run_txn_remevent_leak
 db	run_compact_subdb_remove
 db	run_log_emfile_nopanic
@@ -476,6 +501,10 @@ db	run_qam_inorder_consume
 db	run_u9_serializable
 db	run_u8_backup_config
 db	run_handle_sizes
+# rfc/0020: a new compatibility level refuses the previous level's region and
+# reads its databases and logs.  SKIPs unless OLD_BUILD points at a build of
+# the previous level.
+db	run_soname_compat
 db	run_s5_failchk_spin
 db	run_mutex_stress
 db	run_opt_null_sample
@@ -497,6 +526,9 @@ db	run_m5_fname_cache
 db	run_foreign_disassoc_leak
 db	run_foreign_reassoc
 db	run_r1_revive
+db	run_r2_dup_revive
+db	run_r2_fuzz
+db	run_rep_cmpvote_order
 db	run_typed_footprint
 db	run_typed_old_reader
 db	run_typed_util
@@ -509,6 +541,11 @@ db	run_mf_discard_order
 db	run_dd_stripes
 # SKIPs (passes) on a build without --enable-dtrace; see the script header.
 db	run_dtrace_probes
+# SKIPs on a build without --enable-compression.  Proves __bam_defdecompress
+# rejects a truncated compressed item instead of over-reading past its end (a
+# corrupt btree page from disk); the over-read faults on a PROT_NONE guard
+# page on any build.
+db	run_bt_decompress_bounds
 
 # ---------------------------------------------------------------------------
 # RFC 0014 typed tier.  sh test/db/run_all.sh with TIER=typed, from an
@@ -557,6 +594,103 @@ tcl	ssi001
 tcl	ssi002
 
 # ---------------------------------------------------------------------------
+# TCL CORE suite on the PR gate (review item A11).  test/tcl/run_core_shard.sh
+# runs each cell in a fresh tclsh on an --enable-diagnostic build; ci.yml's
+# tcl-core matrix job runs one shard per matrix entry.  Each shard is its own
+# tier (tcl-core-<shard>) so the gate asserts exactly that shard's cells ran
+# without treating the other, not-run-in-this-job shards as MISSING.  Verdict
+# names are <test>-<method> for the method-swept cells and <test> for sdb.
+# The method sweep is the review's list: test001-012, test026, test030,
+# test046, test048, test051, test086; recd is recd001-010; sdb is sdb001-012.
+# ---------------------------------------------------------------------------
+tcl-core-btree	test001-btree
+tcl-core-btree	test002-btree
+tcl-core-btree	test003-btree
+tcl-core-btree	test004-btree
+tcl-core-btree	test005-btree
+tcl-core-btree	test006-btree
+tcl-core-btree	test007-btree
+tcl-core-btree	test008-btree
+tcl-core-btree	test009-btree
+tcl-core-btree	test010-btree
+tcl-core-btree	test011-btree
+tcl-core-btree	test012-btree
+tcl-core-btree	test026-btree
+tcl-core-btree	test030-btree
+tcl-core-btree	test046-btree
+tcl-core-btree	test048-btree
+tcl-core-btree	test051-btree
+tcl-core-btree	test086-btree
+tcl-core-hash	test001-hash
+tcl-core-hash	test002-hash
+tcl-core-hash	test003-hash
+tcl-core-hash	test004-hash
+tcl-core-hash	test005-hash
+tcl-core-hash	test006-hash
+tcl-core-hash	test007-hash
+tcl-core-hash	test008-hash
+tcl-core-hash	test009-hash
+tcl-core-hash	test010-hash
+tcl-core-hash	test011-hash
+tcl-core-hash	test012-hash
+tcl-core-hash	test026-hash
+tcl-core-hash	test030-hash
+tcl-core-hash	test046-hash
+tcl-core-hash	test048-hash
+tcl-core-hash	test051-hash
+tcl-core-hash	test086-hash
+tcl-core-recno	test001-recno
+tcl-core-recno	test002-recno
+tcl-core-recno	test003-recno
+tcl-core-recno	test004-recno
+tcl-core-recno	test005-recno
+tcl-core-recno	test006-recno
+tcl-core-recno	test007-recno
+tcl-core-recno	test008-recno
+tcl-core-recno	test009-recno
+tcl-core-recno	test010-recno
+tcl-core-recno	test011-recno
+tcl-core-recno	test012-recno
+tcl-core-recno	test026-recno
+tcl-core-recno	test030-recno
+tcl-core-recno	test046-recno
+tcl-core-recno	test048-recno
+tcl-core-recno	test051-recno
+tcl-core-recno	test086-recno
+tcl-core-recd-btree	recd001-btree
+tcl-core-recd-btree	recd002-btree
+tcl-core-recd-btree	recd003-btree
+tcl-core-recd-btree	recd004-btree
+tcl-core-recd-btree	recd005-btree
+tcl-core-recd-btree	recd006-btree
+tcl-core-recd-btree	recd007-btree
+tcl-core-recd-btree	recd008-btree
+tcl-core-recd-btree	recd009-btree
+tcl-core-recd-btree	recd010-btree
+tcl-core-recd-hash	recd001-hash
+tcl-core-recd-hash	recd002-hash
+tcl-core-recd-hash	recd003-hash
+tcl-core-recd-hash	recd004-hash
+tcl-core-recd-hash	recd005-hash
+tcl-core-recd-hash	recd006-hash
+tcl-core-recd-hash	recd007-hash
+tcl-core-recd-hash	recd008-hash
+tcl-core-recd-hash	recd009-hash
+tcl-core-recd-hash	recd010-hash
+tcl-core-sdb	sdb001
+tcl-core-sdb	sdb002
+tcl-core-sdb	sdb003
+tcl-core-sdb	sdb004
+tcl-core-sdb	sdb005
+tcl-core-sdb	sdb006
+tcl-core-sdb	sdb007
+tcl-core-sdb	sdb008
+tcl-core-sdb	sdb009
+tcl-core-sdb	sdb010
+tcl-core-sdb	sdb011
+tcl-core-sdb	sdb012
+
+# ---------------------------------------------------------------------------
 # DST fault-class capstones, one per fault class.   test/sim/run_capstones.sh
 # Hard gate in ci.yml's dst job.  The old inline loop used `set -e`, so the
 # FIRST failure ended the run and the remaining capstones produced no signal at
@@ -574,3 +708,27 @@ sim	test_sim_enospc
 # library (BH.gen never bumped) and requires the probe to FAIL, so this verdict
 # means the generation bump is load-bearing, not merely present.
 bench	optimistic_teeth
+
+# ---------------------------------------------------------------------------
+# RFC 0024 runtime fault-injection, single-node tier (F1).  test/dst-rt/run.sh
+# Each scenario emits one verdict per arm.  The tool-dependent arms are
+# `optional`: libfiu/libumem/FAINT each SKIP on a runner without them (the
+# verdict is `skip`, which the gate accepts), but when the tool IS present the
+# arm must run -- so a lost run is still a MISSING, not silence.  The two S1
+# arms need no external tool and are MANDATORY.  The HA arms (s4-*/s5-*) are
+# owned by F2 and listed in their own block.
+# ---------------------------------------------------------------------------
+dst-rt	s1-normal
+dst-rt	s1-native-directio	optional
+dst-rt	s1-sabotage
+dst-rt	s1-preload-directio	optional
+dst-rt	s2-eio-write		optional
+dst-rt	s2-fsync-fail		optional
+dst-rt	s2-enospc		optional
+dst-rt	s2-short		optional
+dst-rt	s2-delete-behind	optional
+dst-rt	s3-faint		optional
+dst-rt	s3-fiu-malloc		optional
+dst-rt	s3-umem			optional
+dst-rt	s3-umem-sabotage	optional
+dst-rt	s9-soak			optional

@@ -870,6 +870,7 @@ struct __env {
 #define	DB_TEST_PREOPEN		 10	/* before __os_open */
 #define	DB_TEST_REPMGR_PERM	 11	/* repmgr perm/archiving tests */
 #define	DB_TEST_SUBDB_LOCKS	 12	/* subdb locking tests */
+#define	DB_TEST_LOCKVEC_GAP	 13	/* yield between __lock_vec elements */
 	int	test_abort;		/* Abort value for testing */
 	int	test_check;		/* Checkpoint value for testing */
 	int	test_copy;		/* Copy value for testing */

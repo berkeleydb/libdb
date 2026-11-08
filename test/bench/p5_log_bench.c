@@ -29,7 +29,7 @@
  * st_scount, st_region_wait/nowait, commits-per-flush) so "how many writes
  * happened under the latch" is derived from the engine, not guessed.
  *
- *	cc -O2 -pthread p5_log_bench.c -I<build> -L<build>/.libs -ldb-2026.0 \
+ *	cc -O2 -pthread p5_log_bench.c -I<build> -L<build>/.libs -ldb-2026.1 \
  *	    -o p5_log_bench
  *	./p5_log_bench <dir> <threads> <secs> <valsz> [lg_bsize] [mode] [spins] [batch]
  *

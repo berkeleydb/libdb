@@ -22,40 +22,53 @@ Set in `dist/RELEASE` as `DB_CALVER`. Git tags are `vYYYY.0M[.MICRO]`
 (e.g. `v2026.09`). This is the number in `db_version()` output, the README, and
 the GitHub release title.
 
-## Compatibility level: FROZEN at `2026.0.9`
+## Compatibility level: `2026.1.0` on master, `2026.0.9` on the 2026.10.7 LTS line
 
 `DB_VERSION_MAJOR.MINOR.PATCH` in `dist/RELEASE` is **not** the release version.
-It is the on-disk / log / region / ABI **compatibility level**, and it is frozen
-at `2026.0.9`. Do not bump it to "do a release" — bump `DB_CALVER` instead.
+It is the **ABI compatibility level**. Do not bump it to "do a release"; bump
+`DB_CALVER` instead. It drives:
 
-**Correction, 2026-09-18.** Earlier revisions of this document said the level was
-frozen at `5.3.37`. That was never true of the shipped artifacts: commit
-`6710649f0` (2026-04-21, five months *before* this document was written) had
-already set the triplet to `2026.0.9`, so **every** fork release from `v2026.04`
-onward has shipped `libdb-2026.0.so` and stamped regions `majver=2026 minver=0`.
-The document described an intention, not the code, and nothing checked it. The
-freeze is real and still matters for exactly the reasons below — it is simply
-frozen at a different value than this file claimed. `dist/meson/db_subs.json` had
-kept the stale `5.3.37` copy, which made the meson build emit a `db.h` claiming
-`5.3.29` and produce a library that could not attach an autoconf-built
-environment; `dist/meson/gen_header.py` now derives the triplet from
-`dist/RELEASE` so the two build systems cannot disagree again.
+- **The soname.** The library is `libdb-MAJOR.MINOR.so` (`LIBVERSION` in
+  `dist/Makefile.in`; the meson build reads the same two numbers from
+  `dist/RELEASE`). Two libraries with the same soname are interchangeable for a
+  dynamically linked program.
+- **Symbol mangling.** With `--with-uniquename`, `DB_VERSION_UNIQUE_NAME`
+  (`_2026001` at 2026.1) suffixes the internal symbols, so two levels can be
+  linked into one process.
+- **The region attach check.** `env_region.c` stamps `majver`/`minver` into a
+  new region and refuses to attach a region of another level
+  (`BDB1538`, `DB_VERSION_MISMATCH`). Nothing is read in that case.
+- **The install prefix** (`/usr/local/BerkeleyDB.MAJOR.MINOR`) and downstream
+  packaging.
 
-It stays frozen because several load-bearing things key off it, and changing it
-breaks them for anyone upgrading within the fork:
+It does **not** version the database or log formats. Those have their own
+numbers (`DB_BTREEVERSION`, `DB_HASHVERSION`, `DB_QAMVERSION`, `DB_HEAPVERSION`,
+`DB_LOGVERSION` in `db.in`), and a database or log written at one level opens
+and recovers at the next.
 
-- **Multi-process shared regions.** `env_region.c` refuses to attach a region
-  whose stamped `majver`/`minver` don't match `DB_VERSION_MAJOR`/`MINOR`. A
-  running environment created by an older build must still attach.
-- **Shared-object soname.** The library is `libdb-5.3.so` (`LIBVERSION =
-  MAJOR.MINOR`). Changing it breaks every dynamically-linked consumer.
-- **Symbol mangling.** `DB_VERSION_UNIQUE_NAME` (`_5003`) is derived from
-  MAJOR/MINOR and mangles the public symbols.
-- **Downstream packaging** parses `5.3.x`.
+### When the level moves (rfc/0020)
 
-Change the compatibility triplet **only** for a real format/ABI break, and then
-through the `ABI-BREAK-INTENDED` process (see `.github/workflows` abi-drift
-gate) — never merely to cut a release.
+1. **On an LTS line, never.** `lts/2026.10.7` is `2026.0.9` and ships
+   `libdb-2026.0.so` for its whole life.
+2. **On master, the MINOR moves when, and only when, the public ABI breaks:**
+   a public function signature changes or a function is removed; a public
+   struct layout changes, including the library-allocated handles `DB`, `DBC`,
+   `DB_ENV` and `DB_TXN` (`test/db/handle_sizes.c` records their sizes for one
+   level and FAILs if they change without a level change); or the meaning of an
+   existing flag changes. The commit carries `ABI-BREAK-INTENDED`.
+3. More than one break between two releases moves the MINOR once.
+4. **A region-only change does not move it**, and neither does an on-disk or
+   log-format change. The build signature and the per-format version numbers
+   gate those (below).
+
+**History.** From `v2026.04` through `v2026.10.8` the level was `2026.0.9`
+(`libdb-2026.0.so`). Commit `6710649f0` set it; an earlier revision of this file
+said it was frozen at `5.3.37`, which was never true of the shipped artifacts,
+and `dist/meson/db_subs.json` carried that stale copy until
+`dist/meson/gen_header.py` began deriving the triplet from `dist/RELEASE`. In
+2026.1 (rfc/0020) the level moved because `sizeof(DB)` had grown from 1456 to
+1744 bytes and `DBC` had gained a field (cursor sharding, `f9937fab5`;
+KNOWN-ISSUES A1) under the unchanged `libdb-2026.0` soname.
 
 ### Region-only format changes do not move the triplet
 
@@ -133,8 +146,8 @@ and those are frozen for the `2026.10.x` LTS line from this tag forward.
 - Human / release identity → `DB_CALVER` (or the leading token of
   `db_version()`).
 - Format / ABI / compatibility decisions → the `DB_VERSION_MAJOR/MINOR/PATCH`
-  triplet (unchanged API: `db_version(&maj,&min,&pat)` returns `2026,0,9` --
-  verified against a built library, not assumed).
+  triplet. `db_version(&maj,&min,&pat)` returns `2026,1,0` on master and
+  `2026,0,9` on the 2026.10.7 LTS line (verified against built libraries).
 
 `db_version()` returns, for example:
 

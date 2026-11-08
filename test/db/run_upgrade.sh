@@ -70,7 +70,8 @@
 
 set -e
 
-BUILD=${BUILD:-.}
+. "$(cd "$(dirname "$0")" && pwd)/runner_lib.sh"
+rl_default_build
 # Anchored to this script, not the caller's cwd: ../test/db/... only resolves
 # when the build dir is inside the source tree.
 _HERE=$(cd "$(dirname "$0")" && pwd)
@@ -88,24 +89,7 @@ ABS_VERIFY=$(cd "$BUILD" && pwd)/db_verify
 rm -f "$WORK"/__db.* "$WORK"/log.* "$WORK"/*.db 2>/dev/null || true
 mkdir -p "$WORK"
 
-# `timeout` is GNU coreutils: present on Linux, absent on stock macOS (where it
-# is `gtimeout` if coreutils is installed).  Resolve it once; if neither exists,
-# run without a timeout rather than failing with rc=127.
-if command -v timeout >/dev/null 2>&1; then
-	TIMEOUT_CMD="timeout"
-elif command -v gtimeout >/dev/null 2>&1; then
-	TIMEOUT_CMD="gtimeout"
-else
-	TIMEOUT_CMD=""
-fi
-run_with_timeout() {
-	if [ -n "$TIMEOUT_CMD" ]; then
-		"$TIMEOUT_CMD" "$@"
-	else
-		shift	# drop the seconds argument
-		"$@"
-	fi
-}
+# run_with_timeout comes from runner_lib.sh (sourced above).
 # upgrade_verify FILE [extra db_upgrade flags...] -- run db_upgrade then
 # db_verify (both under a timeout).  Used for paths that must verify clean.
 upgrade_verify() {

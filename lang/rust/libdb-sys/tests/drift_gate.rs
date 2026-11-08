@@ -22,9 +22,11 @@ fn include_dir() -> PathBuf {
             return inc;
         }
     }
-    let well_known = PathBuf::from("/usr/local/BerkeleyDB.2026.0/include");
-    if well_known.join("db.h").exists() {
-        return well_known;
+    for lvl in ["2026.1", "2026.0"] {
+        let well_known = PathBuf::from(format!("/usr/local/BerkeleyDB.{}/include", lvl));
+        if well_known.join("db.h").exists() {
+            return well_known;
+        }
     }
     // Last resort: assume the compiler's default search path has db.h.
     PathBuf::from(".")

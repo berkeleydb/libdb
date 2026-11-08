@@ -519,6 +519,77 @@ jobs:
         run: ./test/check_manifest.sh --tier tcl
 
   # ----------------------------------------------------------------------------
+  # TCL core suite on the PR gate (review item A11).  The canonical
+  # btree/hash/recno + recd + sdb core used to run only best-effort nightly
+  # (ci-extended.yml run_std); per PR only lock001/txn001/test001/ssi001/ssi002
+  # ran, so an access-method, recovery or sub-database regression reached master
+  # on the strength of five tests.  This runs that core on every push/PR, built
+  # --enable-diagnostic so the DIAGNOSTIC asserts are exercised by the fast
+  # signal, and SHARDED so each shard stays well under ~20 minutes.
+  #
+  # Each shard is its own manifest tier (tcl-core-<shard>): the shards are
+  # independent matrix jobs, so a per-shard tier lets the gate assert exactly
+  # this shard's (test, method) cells ran without treating the other shards as
+  # MISSING.  run_core_shard.sh runs each test in a FRESH tclsh with a clean
+  # TESTDIR and emits one verdict per cell.
+  #
+  # Shard timings (dev box, c6i.8xlarge, --enable-diagnostic) are in the PR;
+  # the slowest shard is well under the per-shard budget below.
+  # ----------------------------------------------------------------------------
+  tcl-core:
+    name: tcl core ${{ matrix.shard }} (--enable-diagnostic)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [btree, hash, recno, recd-btree, recd-hash, sdb]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tcl
+        run: sudo apt-get update && sudo apt-get install -y tcl-dev tcl
+      - name: Configure (diagnostic + test + tcl)
+        working-directory: build_unix
+        run: ../dist/configure --enable-diagnostic --enable-test --with-tcl=/usr/lib/tcl8.6
+      - name: Build
+        working-directory: build_unix
+        run: make -j$(nproc)
+      - name: Run core shard
+        working-directory: build_unix
+        run: sh ../test/tcl/run_core_shard.sh ${{ matrix.shard }}
+      - name: Manifest gate (assert every cell in this shard produced a verdict)
+        if: always()
+        run: ./test/check_manifest.sh --tier tcl-core-${{ matrix.shard }}
+
+  # ----------------------------------------------------------------------------
+  # test/db regression tier on an --enable-diagnostic build (review item A11).
+  # The posix `default` job runs the db tier on a plain build; no job ran it
+  # with DIAGNOSTIC asserts on, so the heavy invariant checks in the engine
+  # were never exercised by the fast PR signal.  Blocking, like the posix db
+  # tier it mirrors.
+  # ----------------------------------------------------------------------------
+  db-diagnostic:
+    name: test/db (--enable-diagnostic, gcc)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CC: gcc
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure (--enable-diagnostic)
+        working-directory: build_unix
+        run: ../dist/configure --enable-diagnostic
+      - name: Build
+        working-directory: build_unix
+        run: make -j$(nproc)
+      - name: Regression runners (test/db)
+        working-directory: build_unix
+        run: sh ../test/db/run_all.sh
+      - name: Manifest gate (assert every test/db runner produced a verdict)
+        if: always()
+        run: ./test/check_manifest.sh --tier db
+
+  # ----------------------------------------------------------------------------
   # Deterministic Simulation Testing (DST): build --enable-dst, run one capstone
   # per fault class + the multi-process failchk pilot, and enforce the
   # zero-overhead-when-off gate (an --enable-dst-off build must contain 0
@@ -691,7 +762,10 @@ jobs:
           int main(void){int a,b,c;char *s=db_version(&a,&b,&c);
             printf("libdb %s (%d.%d.%d)\n",s,a,b,c);return 0;}
           EOF
-          cc /tmp/smoke.c -Ibuild-meson/dist -Lbuild-meson/dist -ldb -o /tmp/smoke
+          # The library is libdb-<MAJOR>.<MINOR> (rfc/0020); read the level
+          # from dist/RELEASE, as dist/meson.build does, so a bump needs no edit here.
+          LVL=$(. dist/RELEASE && echo "$DB_VERSION_MAJOR.$DB_VERSION_MINOR")
+          cc /tmp/smoke.c -Ibuild-meson/dist -Lbuild-meson/dist -ldb-"$LVL" -o /tmp/smoke
           if [ "$RUNNER_OS" = "macOS" ]; then export DYLD_LIBRARY_PATH=build-meson/dist; else export LD_LIBRARY_PATH=build-meson/dist; fi
           /tmp/smoke
 
@@ -728,16 +802,20 @@ jobs:
       - name: Build and install libdb
         working-directory: build_unix
         run: |
-          ../dist/configure --prefix=/usr/local/BerkeleyDB.2026.0
+          # The install prefix follows the compatibility level in
+          # dist/RELEASE (rfc/0020), which is also the prefix the bindings
+          # probe, so a level bump needs no edit here.
+          LVL=$(. ../dist/RELEASE && echo "$DB_VERSION_MAJOR.$DB_VERSION_MINOR")
+          PREFIX=/usr/local/BerkeleyDB.$LVL
+          echo "LIBDB_DIR=$PREFIX" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$PREFIX/lib" >> "$GITHUB_ENV"
+          ../dist/configure --prefix="$PREFIX"
           make -j"$(nproc)"
           sudo make install
       - name: Rust toolchain components
         run: rustup component add clippy rustfmt || true
       - name: Rust binding -- test, doc-test, clippy, fmt, examples
         working-directory: lang/rust
-        env:
-          LIBDB_DIR: /usr/local/BerkeleyDB.2026.0
-          LD_LIBRARY_PATH: /usr/local/BerkeleyDB.2026.0/lib
         run: |
           cargo test
           cargo test --doc
@@ -754,8 +832,6 @@ jobs:
           echo /opt/zig >> "$GITHUB_PATH"
       - name: Zig binding -- test (3 modes), drift gate, examples
         working-directory: lang/zig
-        env:
-          LD_LIBRARY_PATH: /usr/local/BerkeleyDB.2026.0/lib
         run: |
           zig version
           zig fmt --check .

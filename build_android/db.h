@@ -51,8 +51,8 @@ extern "C" {
 #define	DB_VERSION_FAMILY	11
 #define	DB_VERSION_RELEASE	2
 #define	DB_VERSION_MAJOR	2026
-#define	DB_VERSION_MINOR	0
-#define	DB_VERSION_PATCH	9
+#define	DB_VERSION_MINOR	1
+#define	DB_VERSION_PATCH	0
 /*
  * DB_CALVER is the calver.org release identity of this fork (YYYY.0M[.MICRO]),
  * distinct from the frozen 5.3.37 above which is only the format/ABI compat
