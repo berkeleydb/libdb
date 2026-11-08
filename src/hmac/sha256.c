@@ -16,6 +16,13 @@
  * and by the engine test test/db/kdf_vectors.c.
  */
 
+/*
+ * memset_s (C11 Annex K) is declared only when __STDC_WANT_LIB_EXT1__ is set
+ * before <string.h>.  macOS has it in libc, so configure's link check finds
+ * it, and without this the call below is an implicit declaration, which
+ * clang rejects.  It must precede db_int.h, which includes <string.h>.
+ */
+#define	__STDC_WANT_LIB_EXT1__	1
 #include "db_config.h"
 
 #include "db_int.h"

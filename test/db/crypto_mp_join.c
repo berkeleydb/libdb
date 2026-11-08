@@ -34,7 +34,7 @@ static int mode_keyfile;
 static const char *keyfile;
 
 static int
-setkey(DB_ENV *dbenv, const char *pw_or_key)
+set_env_key(DB_ENV *dbenv, const char *pw_or_key)
 {
 	if (mode_keyfile)
 		return (dbenv->set_encrypt_keyfile(dbenv, pw_or_key,
@@ -51,7 +51,7 @@ create_env(const char *keyarg)
 	int ret;
 
 	if ((ret = db_env_create(&dbenv, 0)) != 0) return (ret);
-	if ((ret = setkey(dbenv, keyarg)) != 0) {
+	if ((ret = set_env_key(dbenv, keyarg)) != 0) {
 		(void)dbenv->close(dbenv, 0); return (ret);
 	}
 	if ((ret = dbenv->open(dbenv, HOME, DB_CREATE | DB_INIT_MPOOL |
@@ -82,7 +82,7 @@ join_read(const char *keyarg)
 	int ret;
 
 	if ((ret = db_env_create(&dbenv, 0)) != 0) return (ret);
-	if ((ret = setkey(dbenv, keyarg)) != 0) {
+	if ((ret = set_env_key(dbenv, keyarg)) != 0) {
 		(void)dbenv->close(dbenv, 0); return (ret);
 	}
 	if ((ret = dbenv->open(dbenv, HOME, DB_INIT_MPOOL | DB_INIT_LOCK |
