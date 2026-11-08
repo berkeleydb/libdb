@@ -27,6 +27,7 @@
 #include "fi_alloc.h"
 
 #include <stdlib.h>
+#include <errno.h>
 #include <stdio.h>
 
 /*
@@ -78,6 +79,14 @@ __db_fi_fail()
 			fprintf(stderr,
 			    "fi: injecting OOM at allocation #%ld\n",
 			    fi_count);
+		/*
+		 * A real malloc(3) failure sets errno to ENOMEM, and
+		 * __os_malloc returns errno.  Without this the caller sees
+		 * whatever errno an earlier system call left behind (often
+		 * ENOENT from a probing open), which turns an injected OOM
+		 * into a different error than any real run can produce.
+		 */
+		errno = ENOMEM;
 		return (1);
 	}
 	return (0);
