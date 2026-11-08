@@ -1793,13 +1793,19 @@ __log_name(dblp, filenumber, namep, fhpp, flags)
 	 * not being there, complain loudly, the wrong user
 	 * probably started up the application.
 	 *
-	 * Transient, process-local resource limits (out of file descriptors)
-	 * are not corruption and must not panic the whole environment: return
-	 * the error so the caller can close handles and retry.  Panicking here
-	 * on EMFILE/ENFILE would take down every thread and process sharing
-	 * the environment for a condition local to this process and this
-	 * moment.
+	 * Transient, process-local resource limits (out of file descriptors,
+	 * or out of memory for the file handle in __os_openhandle) are not
+	 * corruption and must not panic the whole environment: return the
+	 * error so the caller can close handles and retry.  Panicking here on
+	 * EMFILE/ENFILE/ENOMEM would take down every thread and process
+	 * sharing the environment for a condition local to this process and
+	 * this moment.
 	 */
+	if (ret == ENOMEM) {
+		__db_err(env, ret, DB_STR_A("5390",
+		    "%s: log file open ran out of memory", "%s"), *namep);
+		return (ret);
+	}
 	if (ret == EMFILE || ret == ENFILE) {
 		__db_err(env, ret, DB_STR_A("5316",
 		    "%s: log file open ran out of file descriptors", "%s"),

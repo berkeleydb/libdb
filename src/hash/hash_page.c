@@ -1828,7 +1828,7 @@ __ham_merge_pages(dbc, tobucket, frombucket, c_data)
 	/* Sort any unsorted pages before adding to the page. */
 	if (to_pagep->type == P_HASH_UNSORTED)
 		if ((ret = __ham_sort_page_cursor(dbc, to_pagep)) != 0)
-			return (ret);
+			goto err;
 
 	/* Fetch the first page of the bucket we are getting rid of. */
 	from_pgno = BUCKET_TO_PAGE(hcp, frombucket);
@@ -2203,7 +2203,7 @@ __ham_split_page(dbc, obucket, nbucket)
 	/* Sort any unsorted pages before doing a hash split. */
 	if (old_pagep->type == P_HASH_UNSORTED)
 		if ((ret = __ham_sort_page_cursor(dbc, old_pagep)) != 0)
-			return (ret);
+			goto err;
 
 	/* Properly initialize the new bucket page. */
 	npgno = BUCKET_TO_PAGE(hcp, nbucket);
