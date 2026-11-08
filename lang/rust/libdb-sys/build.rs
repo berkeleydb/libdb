@@ -65,7 +65,10 @@ fn main() {
     // Well-known autoconf install prefixes.
     for lvl in LEVELS {
         let prefix = format!("/usr/local/BerkeleyDB.{}", lvl);
-        if Path::new(&prefix).join(format!("lib/libdb-{}.so", lvl)).exists() {
+        if Path::new(&prefix)
+            .join(format!("lib/libdb-{}.so", lvl))
+            .exists()
+        {
             println!("cargo:rustc-link-search=native={}/lib", prefix);
             println!("cargo:rustc-link-lib=db-{}", lvl);
             println!("cargo:include={}/include", prefix);
