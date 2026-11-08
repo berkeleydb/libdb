@@ -39,6 +39,14 @@ if [ -z "$LIB" ] ; then
 fi
 [ -n "$LIB" ] || { echo "run_lockvec_atomicity.sh: FAIL no libdb library under $BUILD" ; exit 1 ; }
 
+# The inter-element hook is CONFIG_TEST-only (--enable-test).  Without it the
+# library has no hook, the normal arm cannot open the window it is meant to
+# observe, and its FAIL would say nothing about lock_vec.  SKIP instead.
+if ! grep -q '^#define[[:space:]]\{1,\}CONFIG_TEST[[:space:]]\{1,\}1' "$BUILD/db_config.h" 2>/dev/null ; then
+	echo "run_lockvec_atomicity.sh: SKIP library built without --enable-test (no inter-element hook)"
+	exit 0
+fi
+
 EXTRALIBS=""
 for l in $(pkg-config --libs liburing 2>/dev/null) ; do EXTRALIBS="$EXTRALIBS $l" ; done
 
