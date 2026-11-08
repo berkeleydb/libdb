@@ -904,7 +904,7 @@ err:
 	COMPQUIET(provider, NULL);
 	COMPQUIET(flags, 0);
 
-	__db_errx(dbenv->env, DB_STR("1557",
+	__db_errx(dbenv->env, DB_STR("5590",
 	    "library build did not include support for cryptography"));
 	return (DB_OPNOTSUP);
 #endif
@@ -997,7 +997,7 @@ __env_set_encrypt_keyfile(dbenv, path, flags)
 #else
 	COMPQUIET(path, NULL);
 	COMPQUIET(flags, 0);
-	__db_errx(dbenv->env, DB_STR("1557",
+	__db_errx(dbenv->env, DB_STR("5591",
 	    "library build did not include support for cryptography"));
 	return (DB_OPNOTSUP);
 #endif
