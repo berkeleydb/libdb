@@ -1,0 +1,50 @@
+# v2026.10.7.2 qualification: freebsd-aarch64 (FreeBSD 14.5-STABLE arm64)
+base: defea6df Merge pull request #221 from berkeleydb/backport/2026.10.7/fixes-1
+cand: 1943cc9b release: libdb 2026.10.7.2 (LTS patch)
+
+## L1 region signature (default configure)
+  base: 0x56a06689
+  cand: 0x56a06689
+  L1 PASS
+
+## L2 soname, exported symbols, .text, handle sizes
+  base soname: libdb-2026.0.so
+  base exported symbols:     1848
+  base .text: 1061308
+  cand soname: libdb-2026.0.so
+  cand exported symbols:     1848
+  cand .text: 1064460
+  symbols removed:        0  added:        0
+  handle_sizes (cand): run_handle_sizes.sh: PASS
+
+## L3 fixed bugs: base / release (each test from the candidate tree, run against both libraries)
+  run_r1_revive: FAIL / PASS
+  run_r2_dup_revive: FAIL / PASS
+  run_r2_fuzz: PASS / PASS
+  run_lock_stripe_exhaustion: FAIL / PASS
+  isolation tier (incl. ssi_cycle_btree, ssi_multiread_skew, ssi_livelock): base rc=1 / release rc=0
+    base failing cells: 
+    cand failing cells: 
+
+## gate 1 test/db tier (release, diagnostic)
+  cand rel: rc=1 pass=35 skip=4 fail=1
+    run_qam_extent_vrfy.sh: FAIL (rc=124)
+  cand diag: rc=1 pass=35 skip=4 fail=1
+    run_qam_extent_vrfy.sh: FAIL (rc=124)
+
+## gate 8 soak (SSI changes SIREAD marker lifetime)
+  soak rc=0: 5 workload(s) run, 0 unexpected outcome(s)
+
+## done 2026-11-04T00:16:30Z
+
+## gate 1 rerun, run_qam_extent_vrfy TIMEOUT=1200 (see QUAL-2026.10.7.2.md)
+  cand rel (qam TIMEOUT=1200): rc=0 pass=37 skip=4 fail=0
+    run_u9_serializable.sh: SKIP no javac on this host
+    run_u8_backup_config.sh: SKIP no javac on this host
+    run_mvcc_mtx_doublefree.sh: SKIP failchk reclaimed no mutexes (0 BDB2017 lines), so the F6 scenario was never constructed -- this run proves nothing either way
+    run_meson_autoconf_parity.sh: SKIP no meson on this host
+  cand diag (qam TIMEOUT=1200): rc=0 pass=37 skip=4 fail=0
+    run_u9_serializable.sh: SKIP no javac on this host
+    run_u8_backup_config.sh: SKIP no javac on this host
+    run_mvcc_mtx_doublefree.sh: SKIP failchk reclaimed no mutexes (0 BDB2017 lines), so the F6 scenario was never constructed -- this run proves nothing either way
+    run_meson_autoconf_parity.sh: SKIP no meson on this host

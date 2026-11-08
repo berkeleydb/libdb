@@ -95,6 +95,26 @@ isolation	ssi_gc_pressure@serializable-default
 isolation	ssi_gc_pressure@serializable-1
 isolation	ssi_crash_pivot-default	optional
 isolation	ssi_crash_pivot-1	optional
+# Adya cycle checker, multi-leaf default (CYC_VALPAD=200): the gate that closes
+# the second write-skew miss (boundary fix + grant-path scans).  GATING for
+# btree at the default partition count.  parts=1 is advisory (a separate pre-
+# existing checker-HARNESS crash under the single-partition tier run; the engine
+# is verified serializable at parts=1 standalone, and the parts=1 engine path is
+# hard-gated by test_iso_anomaly + ssi_multiread_skew).  Hash is advisory too
+# (separate pre-existing concurrent-MVCC hang; Hash SSI is gated by ssi006).
+isolation	ssi_cycle_btree-default
+isolation	ssi_cycle_btree-1	optional
+isolation	ssi_cycle_hash-default	optional
+# ssi_multiread_skew is the regression gate for the cross-leaf write-skew fix
+# (SSI keeps its own SIREAD marker instead of dropping it on a same-page write
+# lock).  It FAILed on every pre-fix build and must now PASS.
+isolation	ssi_multiread_skew-default
+isolation	ssi_multiread_skew-1
+# ssi_livelock: SSI must commit >= 50% of plain SI on the same pure-SSI
+# workload (the #257 inclusive edge test committed ~0.5% and passed every
+# correctness gate).
+isolation	ssi_livelock-default
+isolation	ssi_livelock-1
 # The two SSI mechanism gates.  ssi_gc_pressure runs at both levels (the
 # snapshot pass is the anti-vacuity control).  ssi_crash_pivot needs a
 # DIAGNOSTIC build for its in-commit crash hook, so it is optional -- but the
@@ -466,6 +486,7 @@ db	run_recd_compact
 db	run_recd_handlers
 db	run_upgrade
 db	run_lock_priority_nullderef
+db	run_lock_stripe_exhaustion
 db	run_txn_remevent_leak
 db	run_compact_subdb_remove
 db	run_log_emfile_nopanic
@@ -493,6 +514,9 @@ db	run_m5_fname_cache
 db	run_foreign_disassoc_leak
 db	run_foreign_reassoc
 db	run_r1_revive
+db	run_r2_dup_revive
+db	run_r2_fuzz
+db	run_rep_cmpvote_order
 db	run_typed_footprint
 db	run_typed_old_reader
 db	run_typed_util
@@ -505,6 +529,11 @@ db	run_mf_discard_order
 db	run_dd_stripes
 # SKIPs (passes) on a build without --enable-dtrace; see the script header.
 db	run_dtrace_probes
+# SKIPs on a build without --enable-compression.  Proves __bam_defdecompress
+# rejects a truncated compressed item instead of over-reading past its end (a
+# corrupt btree page from disk); the over-read faults on a PROT_NONE guard
+# page on any build.
+db	run_bt_decompress_bounds
 
 # ---------------------------------------------------------------------------
 # RFC 0014 typed tier.  sh test/db/run_all.sh with TIER=typed, from an
@@ -667,3 +696,27 @@ sim	test_sim_enospc
 # library (BH.gen never bumped) and requires the probe to FAIL, so this verdict
 # means the generation bump is load-bearing, not merely present.
 bench	optimistic_teeth
+
+# ---------------------------------------------------------------------------
+# RFC 0024 runtime fault-injection, single-node tier (F1).  test/dst-rt/run.sh
+# Each scenario emits one verdict per arm.  The tool-dependent arms are
+# `optional`: libfiu/libumem/FAINT each SKIP on a runner without them (the
+# verdict is `skip`, which the gate accepts), but when the tool IS present the
+# arm must run -- so a lost run is still a MISSING, not silence.  The two S1
+# arms need no external tool and are MANDATORY.  The HA arms (s4-*/s5-*) are
+# owned by F2 and listed in their own block.
+# ---------------------------------------------------------------------------
+dst-rt	s1-normal
+dst-rt	s1-native-directio	optional
+dst-rt	s1-sabotage
+dst-rt	s1-preload-directio	optional
+dst-rt	s2-eio-write		optional
+dst-rt	s2-fsync-fail		optional
+dst-rt	s2-enospc		optional
+dst-rt	s2-short		optional
+dst-rt	s2-delete-behind	optional
+dst-rt	s3-faint		optional
+dst-rt	s3-fiu-malloc		optional
+dst-rt	s3-umem			optional
+dst-rt	s3-umem-sabotage	optional
+dst-rt	s9-soak			optional

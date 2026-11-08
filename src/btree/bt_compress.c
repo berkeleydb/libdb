@@ -493,22 +493,45 @@ __bam_defdecompress(dbp, prevKey, prevData, compressed, destKey, destData)
 	/*
 	 * Check for the magic identifying byte, that tells us that this is a
 	 * compressed duplicate value.
+	 *
+	 * A compressed item comes from a btree page, i.e. from disk, so it is a
+	 * trust boundary: a corrupt or truncated item must be rejected, not
+	 * over-read.  Each __db_decompress_count_int/_int32 below dereferences
+	 * the byte at the current offset, so that offset must be proven < the
+	 * compressed buffer BEFORE the read -- otherwise a short item over-reads
+	 * its lookahead byte (and *s over-reads a zero-length item).
 	 */
+	if (compressed->size < 1)
+		return (EINVAL);
 	s = (u_int8_t*)compressed->data;
 	if (*s == CMP_INT_SPARE_VAL) {
 		++s;
 		size = 1;
 
 		/* Unmarshal prefix and suffix */
+		if (size >= compressed->size)
+			return (EINVAL);
 		size += __db_decompress_count_int(s);
 		if (size > compressed->size)
 			return (EINVAL);
 		s += __db_decompress_int32(s, &prefix);
 
+		if (size >= compressed->size)
+			return (EINVAL);
 		size += __db_decompress_count_int(s);
 		if (size > compressed->size)
 			return (EINVAL);
 		s += __db_decompress_int32(s, &suffix);
+
+		/*
+		 * prefix and suffix are from disk too: bound them before any
+		 * sum, or prefix + suffix and size + suffix wrap and the copies
+		 * below run with a huge length.
+		 */
+		if (prefix > prevData->size ||
+		    suffix > compressed->size - size ||
+		    suffix > UINT32_MAX - prefix)
+			return (EINVAL);
 
 		/* Check destination lengths */
 		destKey->size = prevKey->size;
@@ -539,21 +562,33 @@ __bam_defdecompress(dbp, prevKey, prevData, compressed, destKey, destData)
 		return (0);
 	}
 
-	/* Unmarshal prefix, suffix and data length */
+	/* Unmarshal prefix, suffix and data length (s[0] is covered by the
+	 * compressed->size >= 1 check above). */
 	size = __db_decompress_count_int(s);
 	if (size > compressed->size)
 		return (EINVAL);
 	s += __db_decompress_int32(s, &prefix);
 
+	if (size >= compressed->size)
+		return (EINVAL);
 	size += __db_decompress_count_int(s);
 	if (size > compressed->size)
 		return (EINVAL);
 	s += __db_decompress_int32(s, &suffix);
 
+	if (size >= compressed->size)
+		return (EINVAL);
 	size += __db_decompress_count_int(s);
 	if (size > compressed->size)
 		return (EINVAL);
 	s += __db_decompress_int32(s, &destData->size);
+
+	/* As above: bound the on-disk lengths before any sum can wrap. */
+	if (prefix > prevKey->size ||
+	    suffix > compressed->size - size ||
+	    suffix > UINT32_MAX - prefix ||
+	    destData->size > compressed->size - size - suffix)
+		return (EINVAL);
 
 	/* Check destination lengths */
 	destKey->size = prefix + suffix;
@@ -611,8 +646,16 @@ __bamc_start_decompress(dbc)
 	cp->prevcursor = NULL;
 	cp->prev2cursor = NULL;
 
-	/* Unmarshal the first data */
+	/*
+	 * Unmarshal the first data.  The item is from disk: bound the varint
+	 * and the length it gives, as __bam_compress_salvage does.
+	 */
+	if (cp->compressed.size == 0 ||
+	    __db_decompress_count_int(cp->compcursor) > cp->compressed.size)
+		return (EINVAL);
 	cp->compcursor += __db_decompress_int32(cp->compcursor, &datasize);
+	if (datasize > (u_int32_t)(cp->compend - cp->compcursor))
+		return (EINVAL);
 	ret = __bam_compress_set_dbt(dbc->dbp,
 	    cp->currentData, cp->compcursor, datasize);
 
