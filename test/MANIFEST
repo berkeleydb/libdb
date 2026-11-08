@@ -482,6 +482,7 @@ shape	gate	optional
 # build matrix (config == default).  Each script prints "<name>: PASS|FAIL".
 # ---------------------------------------------------------------------------
 db	run_hash_unsorted_cmp
+db	run_crypto_iv_unpredictable
 db	run_hash_split_leak
 db	run_recd_compact
 db	run_recd_handlers
@@ -583,6 +584,103 @@ tcl	txn001
 tcl	test001
 tcl	ssi001
 tcl	ssi002
+
+# ---------------------------------------------------------------------------
+# TCL CORE suite on the PR gate (review item A11).  test/tcl/run_core_shard.sh
+# runs each cell in a fresh tclsh on an --enable-diagnostic build; ci.yml's
+# tcl-core matrix job runs one shard per matrix entry.  Each shard is its own
+# tier (tcl-core-<shard>) so the gate asserts exactly that shard's cells ran
+# without treating the other, not-run-in-this-job shards as MISSING.  Verdict
+# names are <test>-<method> for the method-swept cells and <test> for sdb.
+# The method sweep is the review's list: test001-012, test026, test030,
+# test046, test048, test051, test086; recd is recd001-010; sdb is sdb001-012.
+# ---------------------------------------------------------------------------
+tcl-core-btree	test001-btree
+tcl-core-btree	test002-btree
+tcl-core-btree	test003-btree
+tcl-core-btree	test004-btree
+tcl-core-btree	test005-btree
+tcl-core-btree	test006-btree
+tcl-core-btree	test007-btree
+tcl-core-btree	test008-btree
+tcl-core-btree	test009-btree
+tcl-core-btree	test010-btree
+tcl-core-btree	test011-btree
+tcl-core-btree	test012-btree
+tcl-core-btree	test026-btree
+tcl-core-btree	test030-btree
+tcl-core-btree	test046-btree
+tcl-core-btree	test048-btree
+tcl-core-btree	test051-btree
+tcl-core-btree	test086-btree
+tcl-core-hash	test001-hash
+tcl-core-hash	test002-hash
+tcl-core-hash	test003-hash
+tcl-core-hash	test004-hash
+tcl-core-hash	test005-hash
+tcl-core-hash	test006-hash
+tcl-core-hash	test007-hash
+tcl-core-hash	test008-hash
+tcl-core-hash	test009-hash
+tcl-core-hash	test010-hash
+tcl-core-hash	test011-hash
+tcl-core-hash	test012-hash
+tcl-core-hash	test026-hash
+tcl-core-hash	test030-hash
+tcl-core-hash	test046-hash
+tcl-core-hash	test048-hash
+tcl-core-hash	test051-hash
+tcl-core-hash	test086-hash
+tcl-core-recno	test001-recno
+tcl-core-recno	test002-recno
+tcl-core-recno	test003-recno
+tcl-core-recno	test004-recno
+tcl-core-recno	test005-recno
+tcl-core-recno	test006-recno
+tcl-core-recno	test007-recno
+tcl-core-recno	test008-recno
+tcl-core-recno	test009-recno
+tcl-core-recno	test010-recno
+tcl-core-recno	test011-recno
+tcl-core-recno	test012-recno
+tcl-core-recno	test026-recno
+tcl-core-recno	test030-recno
+tcl-core-recno	test046-recno
+tcl-core-recno	test048-recno
+tcl-core-recno	test051-recno
+tcl-core-recno	test086-recno
+tcl-core-recd-btree	recd001-btree
+tcl-core-recd-btree	recd002-btree
+tcl-core-recd-btree	recd003-btree
+tcl-core-recd-btree	recd004-btree
+tcl-core-recd-btree	recd005-btree
+tcl-core-recd-btree	recd006-btree
+tcl-core-recd-btree	recd007-btree
+tcl-core-recd-btree	recd008-btree
+tcl-core-recd-btree	recd009-btree
+tcl-core-recd-btree	recd010-btree
+tcl-core-recd-hash	recd001-hash
+tcl-core-recd-hash	recd002-hash
+tcl-core-recd-hash	recd003-hash
+tcl-core-recd-hash	recd004-hash
+tcl-core-recd-hash	recd005-hash
+tcl-core-recd-hash	recd006-hash
+tcl-core-recd-hash	recd007-hash
+tcl-core-recd-hash	recd008-hash
+tcl-core-recd-hash	recd009-hash
+tcl-core-recd-hash	recd010-hash
+tcl-core-sdb	sdb001
+tcl-core-sdb	sdb002
+tcl-core-sdb	sdb003
+tcl-core-sdb	sdb004
+tcl-core-sdb	sdb005
+tcl-core-sdb	sdb006
+tcl-core-sdb	sdb007
+tcl-core-sdb	sdb008
+tcl-core-sdb	sdb009
+tcl-core-sdb	sdb010
+tcl-core-sdb	sdb011
+tcl-core-sdb	sdb012
 
 # ---------------------------------------------------------------------------
 # DST fault-class capstones, one per fault class.   test/sim/run_capstones.sh
