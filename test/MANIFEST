@@ -483,6 +483,7 @@ shape	gate	optional
 # ---------------------------------------------------------------------------
 db	run_hash_unsorted_cmp
 db	run_crypto_iv_unpredictable
+db	run_hash_split_leak
 db	run_recd_compact
 db	run_recd_handlers
 db	run_upgrade
