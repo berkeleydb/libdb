@@ -170,6 +170,7 @@ extern "C" {
 #define	DB_LO_STACK_MAX	128
 
 typedef struct __db_lo_held {
+	const ENV	*env;		/* Whose mutex region the index is in. */
 	db_mutex_t	 mutex;		/* Which latch (region-relative). */
 	int		 alloc_id;	/* MTX_* class. */
 	int		 rank;		/* Cached rank of alloc_id. */

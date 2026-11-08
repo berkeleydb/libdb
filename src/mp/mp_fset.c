@@ -87,7 +87,13 @@ __memp_dirty(dbmfp, addrp, ip, txn, priority, flags)
 		}
 		if ((ret = __memp_fget(dbmfp,
 		    &pgno, ip, txn, flags, addrp)) != 0) {
-			if (ret != DB_LOCK_DEADLOCK)
+			/*
+			 * A deadlock or an SSI abort is an ordinary outcome the
+			 * caller resolves by aborting the txn; only report a real
+			 * failure to get the page.
+			 */
+			if (ret != DB_LOCK_DEADLOCK &&
+			    ret != DB_SNAPSHOT_CONFLICT && ret != DB_SNAPSHOT_UNSAFE)
 				__db_errx(env, DB_STR_A("3010",
 				    "%s: error getting a page for writing",
 				    "%s"), __memp_fn(dbmfp));

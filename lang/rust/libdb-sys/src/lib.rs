@@ -144,6 +144,7 @@ pub const DB_MULTIPLE_KEY: u_int32_t = 0x0000_4000;
 
 // --- txn flags --------------------------------------------------------------
 pub const DB_TXN_SNAPSHOT: u_int32_t = 0x0000_0004;
+pub const DB_TXN_SERIALIZABLE: u_int32_t = 0x0020_0000;
 pub const DB_TXN_NOWAIT: u_int32_t = 0x0000_0002;
 pub const DB_TXN_NOSYNC: u_int32_t = 0x0000_0001;
 pub const DB_TXN_WRITE_NOSYNC: u_int32_t = 0x0000_0020;
@@ -238,6 +239,7 @@ pub const CONSTANTS: &[(&str, i64)] = &[
     ("DB_MULTIPLE", DB_MULTIPLE as i64),
     ("DB_MULTIPLE_KEY", DB_MULTIPLE_KEY as i64),
     ("DB_TXN_SNAPSHOT", DB_TXN_SNAPSHOT as i64),
+    ("DB_TXN_SERIALIZABLE", DB_TXN_SERIALIZABLE as i64),
     ("DB_TXN_NOWAIT", DB_TXN_NOWAIT as i64),
     ("DB_TXN_NOSYNC", DB_TXN_NOSYNC as i64),
     ("DB_TXN_WRITE_NOSYNC", DB_TXN_WRITE_NOSYNC as i64),

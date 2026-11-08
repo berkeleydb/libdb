@@ -42,6 +42,13 @@ const safe = switch (builtin.mode) {
 pub const Error = error{
     /// `DB_LOCK_DEADLOCK` -- abort the txn and retry (see `Env.transact`).
     Deadlock,
+    /// `DB_SNAPSHOT_CONFLICT` -- serializable snapshot isolation (SSI) aborted
+    /// this transaction as the pivot of a dangerous structure. Abort and retry
+    /// the whole transaction, exactly like `Deadlock`. `Env.transact` retries
+    /// it. Only occurs under `DB_TXN_SERIALIZABLE`.
+    SnapshotConflict,
+    /// `DB_SNAPSHOT_UNSAFE` -- snapshot isolation could not be provided; retry.
+    SnapshotUnsafe,
     /// `DB_RUNRECOVERY` -- the environment panicked; it must run recovery.
     RunRecovery,
     /// `DB_NOTFOUND` where a value was required.
@@ -69,6 +76,8 @@ fn check(code: c_int) Error!void {
     if (code == 0) return;
     return switch (code) {
         consts.DB_LOCK_DEADLOCK => Error.Deadlock,
+        consts.DB_SNAPSHOT_CONFLICT => Error.SnapshotConflict,
+        consts.DB_SNAPSHOT_UNSAFE => Error.SnapshotUnsafe,
         consts.DB_RUNRECOVERY => Error.RunRecovery,
         consts.DB_NOTFOUND => Error.NotFound,
         consts.DB_KEYEXIST => Error.KeyExist,
@@ -76,6 +85,14 @@ fn check(code: c_int) Error!void {
         consts.DB_SECONDARY_BAD => Error.SecondaryBad,
         else => if (code < 0) Error.Db else Error.System,
     };
+}
+
+/// Whether an error is a transient abort that `Env.transact` should retry:
+/// a deadlock or either SSI snapshot abort. All three mean "abort the whole
+/// transaction and run it again".
+fn isRetryable(e: Error) bool {
+    return e == Error.Deadlock or e == Error.SnapshotConflict or
+        e == Error.SnapshotUnsafe;
 }
 
 /// The library version at run time.
@@ -285,11 +302,18 @@ pub const Env = struct {
         while (true) : (attempt += 1) {
             var txn = try self.begin(null, consts.DB_TXN_NOWAIT);
             if (op(ctx, &txn)) |_| {
-                try txn.commit();
-                return;
+                // The commit can itself raise a retryable abort: under SSI
+                // (DB_TXN_SERIALIZABLE, e.g. an env default) the pivot check
+                // runs at commit time, so a clean `op` can still fail here.
+                if (txn.commit()) |_| {
+                    return;
+                } else |ce| {
+                    if (isRetryable(ce) and attempt < max_retries) continue;
+                    return ce;
+                }
             } else |e| {
                 txn.abort();
-                if (e == Error.Deadlock and attempt < max_retries) continue;
+                if (isRetryable(e) and attempt < max_retries) continue;
                 return e;
             }
         }
