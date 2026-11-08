@@ -111,17 +111,20 @@ decision.
 ## 3. The pin
 
 `test/db/run_lock_region_layout.sh` drives `test/db/lock_region_layout.c`, which
-prints and asserts the sizes in Sec 2 and the region signature, and
-`test/db/run_lock_region_layout.sh` additionally compares the live region
-signature (via `dist/env_sig_print.sh`) against the recorded value. The test
-**FAILS if any of these move**:
+prints and asserts the sizes in Sec 2. The test **FAILS if any of these move**:
 
 * `LOCK_LOCKER_STRIPES != 64`
 * `sizeof(DB_LOCKERSTRIPE) != DB_CACHE_LINE_BYTES` (already a build assertion;
   the test confirms it at runtime too, so a non-DIAGNOSTIC build is covered)
 * `sizeof(DB_LOCKREGION)`, `sizeof(DB_LOCKPART)`, `sizeof(struct __db_lock)`,
   `sizeof(DB_LOCKOBJ)`, `sizeof(DB_LOCKER)` differ from the recorded values
-* the region signature differs from the recorded `0xe67a9de8` (LP64 x86_64)
+
+It does not compare the region signature with a recorded value. The signature
+depends on the platform and the configure options (`0xe67a9de8` for an
+`--enable-diagnostic --enable-test` build, `0x841f4ea8` for a plain one, on
+LP64 x86_64), so one constant failed every other configuration, including
+CI's plain jobs. The signature is gated where like is compared with like: the
+`region signature` CI job (PR against base, same configure) and the LTS L1 gate.
 
 A deliberate region change updates the recorded values **in the same commit that
 carries `REGION-SIG-CHANGE-INTENDED`**, exactly as handle_sizes.c pins the
