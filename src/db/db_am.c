@@ -129,15 +129,27 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 	struct __cq_part *cqp;
 	db_threadid_t tid;
 	u_int32_t part;
-	int allocated, envlid, ret;
+	int allocated, envlid, from_cache, ret;
 	pid_t pid;
 
 	env = dbp->env;
-	allocated = envlid = 0;
+	allocated = envlid = from_cache = 0;
 
 	/* Pick this thread's cursor-queue partition. */
 	part = DB_CURSOR_PART_PICK(dbp, ip);
 	cqp = &dbp->cq_parts[part];
+
+	/*
+	 * RFC 0021: try this thread's transient-cursor cache first.  A hit
+	 * returns a cursor that is already DBC_ACTIVE and already on the
+	 * handle's active queue, so the free-queue scan and both queue mutexes
+	 * below are skipped on the common path.  __db_cursor_cache_get only
+	 * returns a cursor for the exact transient shape it caches.
+	 */
+	if ((ret = __db_cursor_cache_get(dbp, dbtype, flags, &dbc)) != 0)
+		return (ret);
+	if (dbc != NULL)
+		from_cache = 1;
 
 	/*
 	 * If dbcp is non-NULL it is assumed to point to an area to initialize
@@ -172,14 +184,22 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 	}
 #endif
 
-	CQ_LOCK(env, cqp);
-	TAILQ_FOREACH(dbc, &cqp->free_queue, links)
-		if (dbtype == dbc->dbtype) {
-			TAILQ_REMOVE(&cqp->free_queue, dbc, links);
-			F_CLR(dbc, ~DBC_OWN_LID);
-			break;
-		}
-	CQ_UNLOCK(env, cqp);
+	if (!from_cache) {
+		CQ_LOCK(env, cqp);
+		TAILQ_FOREACH(dbc, &cqp->free_queue, links)
+			if (dbtype == dbc->dbtype) {
+				TAILQ_REMOVE(&cqp->free_queue, dbc, links);
+				F_CLR(dbc, ~DBC_OWN_LID);
+				break;
+			}
+		CQ_UNLOCK(env, cqp);
+	} else
+		/*
+		 * A cached cursor stays on the active queue; keep DBC_ACTIVE
+		 * and clear every other per-op flag just as the free-queue
+		 * reuse above does.
+		 */
+		F_CLR(dbc, ~(DBC_OWN_LID | DBC_ACTIVE));
 
 	if (dbc == NULL) {
 		if ((ret = __os_calloc(env, 1, sizeof(DBC), &dbc)) != 0)
@@ -498,16 +518,36 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 	else
 		ENV_GET_THREAD_INFO(env, dbc->thread_info);
 
-	CQ_LOCK(env, cqp);
-	TAILQ_INSERT_TAIL(&cqp->active_queue, dbc, links);
-	F_SET(dbc, DBC_ACTIVE);
-	CQ_UNLOCK(env, cqp);
+	/*
+	 * A cached cursor was never removed from the active queue, so it is
+	 * still linked and DBC_ACTIVE; only a fresh or free-queue cursor needs
+	 * to be (re)inserted here under the partition mutex.
+	 */
+	if (!from_cache) {
+		CQ_LOCK(env, cqp);
+		TAILQ_INSERT_TAIL(&cqp->active_queue, dbc, links);
+		F_SET(dbc, DBC_ACTIVE);
+		CQ_UNLOCK(env, cqp);
+	}
 
 	*dbcp = dbc;
 	return (0);
 
 err:	if (allocated)
 		__os_free(env, dbc);
+	else if (from_cache) {
+		/*
+		 * A cache-hit cursor failed to refresh.  It is still linked on
+		 * the active queue and DBC_ACTIVE but no longer referenced by
+		 * the cache slot; return it to the free queue so it is not
+		 * leaked or double-used.
+		 */
+		CQ_LOCK(env, cqp);
+		F_CLR(dbc, DBC_ACTIVE);
+		TAILQ_REMOVE(&cqp->active_queue, dbc, links);
+		TAILQ_INSERT_TAIL(&cqp->free_queue, dbc, links);
+		CQ_UNLOCK(env, cqp);
+	}
 	return (ret);
 }
 

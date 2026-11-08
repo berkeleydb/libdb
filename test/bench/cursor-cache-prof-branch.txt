@@ -1,0 +1,23 @@
+    46.76%    46.76%  swapper        
+            |
+            ---secondary_startup_64_no_verify
+    19.03%  swapper          [kernel.kallsyms]     [k] acpi_processor_ffh_cstate_enter
+     6.54%  kworker/u258:2-  [kernel.kallsyms]     [k] bio_add_folio
+     5.59%  kworker/u258:2-  [kernel.kallsyms]     [k] iomap_do_writepage
+     4.99%  swapper          [kernel.kallsyms]     [k] format_decode
+     4.57%  kworker/u258:2-  [kernel.kallsyms]     [k] find_get_pages_range_tag
+     4.03%  swapper          [kernel.kallsyms]     [k] _raw_spin_lock
+     3.73%  kworker/u258:2-  [kernel.kallsyms]     [k] __bio_split_to_limits
+     3.47%  kworker/u258:2-  [kernel.kallsyms]     [k] mod_zone_page_state
+     3.28%  kworker/u258:2-  [kernel.kallsyms]     [k] xas_find_marked
+     3.23%  kworker/u258:2-  [kernel.kallsyms]     [k] folio_mapped
+     3.18%  kworker/u258:2-  [kernel.kallsyms]     [k] folio_unlock
+     3.08%  kworker/u258:2-  [kernel.kallsyms]     [k] __folio_start_writeback
+     2.70%  swapper          [kernel.kallsyms]     [k] __mod_memcg_lruvec_state
+     2.69%  sleep            ld-linux-x86-64.so.2  [.] 0x00000000000124e9
+     2.56%  kworker/u258:2-  [xfs]                 [k] xfs_imap_valid
+     2.17%  kworker/38:1H-k  [kernel.kallsyms]     [k] xas_find
+     2.16%  kworker/u258:2-  [kernel.kallsyms]     [k] __mem_cgroup_uncharge_list
+     1.76%  swapper          [kernel.kallsyms]     [k] poll_idle
+     1.61%  kworker/u258:2-  [xfs]                 [k] xfs_map_blocks
+     1.58%  kworker/37:1H-k  [kernel.kallsyms]     [k] __blk_rq_map_sg
