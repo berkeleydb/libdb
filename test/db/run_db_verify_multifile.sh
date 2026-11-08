@@ -28,7 +28,8 @@
 
 set -eu
 
-BUILD=${BUILD:-.}
+. "$(cd "$(dirname "$0")" && pwd)/runner_lib.sh"
+rl_default_build
 HOME_DIR=${HOME_DIR:-DB_VERIFY_MULTI_TESTDIR}
 TIMEOUT=${TIMEOUT:-180}
 
@@ -39,35 +40,11 @@ LOAD="$BUILD/db_load"
 VERIFY=$(cd "$(dirname "$VERIFY")" && pwd)/$(basename "$VERIFY")
 LOAD=$(cd "$(dirname "$LOAD")" && pwd)/$(basename "$LOAD")
 
-# `timeout` is GNU coreutils: absent on stock macOS (gtimeout with coreutils).
-# If neither exists, run without one rather than failing with rc=127.
-if command -v timeout >/dev/null 2>&1; then
-	TIMEOUT_CMD="timeout"
-elif command -v gtimeout >/dev/null 2>&1; then
-	TIMEOUT_CMD="gtimeout"
-else
-	TIMEOUT_CMD=""
-fi
-run_with_timeout() {
-	if [ -n "$TIMEOUT_CMD" ]; then
-		"$TIMEOUT_CMD" "$@"
-	else
-		shift
-		"$@"
-	fi
-}
-
 PYTHON=${PYTHON:-python3}
 command -v "$PYTHON" >/dev/null 2>&1 || \
     { echo "FAIL: $PYTHON needed to corrupt a page"; exit 1; }
 
-# Start from an EMPTY home, regions included. Removing only *.db left the
-# previous run's __db.00N region files behind, so a second run (another arm,
-# another build) attached a region it did not create: on FreeBSD that is a
-# PANIC (a pshared mutex whose initialiser has exited, tracker row B3), and
-# between builds it is a DB_VERSION_MISMATCH. Either way a false red.
-[ -d "$HOME_DIR" ] && find "$HOME_DIR" -mindepth 1 -delete 2>/dev/null
-mkdir -p "$HOME_DIR"
+rl_fresh_home "$HOME_DIR"
 cd "$HOME_DIR"
 
 fail=0
