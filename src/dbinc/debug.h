@@ -268,6 +268,16 @@ typedef enum {
 #define	DB_TEST_WAIT(env, val)						\
 	if ((val) != 0)							\
 		__os_yield((env), (u_long)(val), 0)
+
+/*
+ * A4: yield between __lock_vec elements so a test can observe that a vector is
+ * not atomic across its elements once the lock region is partitioned.  Fires
+ * only when the application explicitly set test_abort to DB_TEST_LOCKVEC_GAP,
+ * so no production or other-test path is affected.  CONFIG_TEST only.
+ */
+#define	DB_TEST_LOCKVEC_ELEM_GAP(env)					\
+	if ((env)->test_abort == DB_TEST_LOCKVEC_GAP)			\
+		__os_yield((env), 0, (u_long)50000)
 #else
 #define	DB_TEST_SUBLOCKS(env, flags)
 #define	DB_ENV_TEST_RECOVERY(env, val, ret, name)
@@ -275,6 +285,7 @@ typedef enum {
 #define	DB_TEST_RECOVERY_LABEL
 #define	DB_TEST_SET(env, val)
 #define	DB_TEST_WAIT(env, val)
+#define	DB_TEST_LOCKVEC_ELEM_GAP(env)
 #endif
 
 #if defined(__cplusplus)
