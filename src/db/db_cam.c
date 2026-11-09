@@ -81,7 +81,7 @@ static int __dbc_cache_on __P((void));
 static int __dbc_cache_eligible __P((DBC *));
 static int __dbc_cache_put __P((DBC *));
 static int __dbc_cache_handle_live __P((DB *, u_int32_t));
-static int __dbc_cache_free_cursor __P((DBC *));
+static int __dbc_cache_free_cursor __P((DBC *, int));
 static void __dbc_cache_reconcile __P((int));
 static int __dbc_cache_epoch_now __P((void));
 static void __dbc_cache_check_epoch __P((void));
@@ -315,20 +315,40 @@ __dbc_cache_handle_live(dbp, gen)
  *	void callers may ignore it, the slot is dropped either way.
  */
 static int
-__dbc_cache_free_cursor(dbc)
+__dbc_cache_free_cursor(dbc, outside_api)
 	DBC *dbc;
+	int outside_api;
 {
+	DB_THREAD_INFO *ip;
 	struct __cq_part *cqp;
 	ENV *env;
+	int ret;
 
 	env = dbc->dbp->env;
 	cqp = DB_CURSOR_PART(dbc);
+	/*
+	 * The thread-exit flush (outside_api) runs from a pthread key
+	 * destructor, after the thread's last API call returned, so with
+	 * DB_ENV->set_thread_count its DB_THREAD_INFO is THREAD_OUT.  CQ_LOCK
+	 * is a region mutex, and a DIAGNOSTIC build requires every region-mutex
+	 * caller to be an active thread (CHECK_MTX_THREAD), so enter the
+	 * environment like an API call does.  Eviction runs inside an API call
+	 * that is already entered, and must not ENV_LEAVE on its behalf.
+	 */
+	ip = NULL;
+	if (outside_api) {
+		ENV_ENTER_RET(env, ip, ret);
+		if (ret != 0)
+			return (ret);
+	}
 	CQ_LOCK(env, cqp);
 	DB_ASSERT(env, F_ISSET(dbc, DBC_ACTIVE));
 	F_CLR(dbc, DBC_ACTIVE);
 	TAILQ_REMOVE(&cqp->active_queue, dbc, links);
 	TAILQ_INSERT_TAIL(&cqp->free_queue, dbc, links);
 	CQ_UNLOCK(env, cqp);
+	if (outside_api)
+		ENV_LEAVE(env, ip);
 	return (0);
 }
 
@@ -367,7 +387,7 @@ __dbc_cache_reconcile(free_queue)
 			continue;
 		if (__dbc_cache_handle_live(e->dbp, e->gen)) {
 			if (free_queue)
-				(void)__dbc_cache_free_cursor(e->dbc);
+				(void)__dbc_cache_free_cursor(e->dbc, 1);
 			else
 				continue;	/* Keep it cached. */
 		}
@@ -575,7 +595,7 @@ __dbc_cache_put(dbc)
 	if (victim->dbc != NULL) {
 		(void)pthread_mutex_lock(&__dbc_reg_mtx);
 		if (__dbc_cache_handle_live(victim->dbp, victim->gen))
-			(void)__dbc_cache_free_cursor(victim->dbc);
+			(void)__dbc_cache_free_cursor(victim->dbc, 0);
 		(void)pthread_mutex_unlock(&__dbc_reg_mtx);
 		victim->dbp = NULL;
 		victim->dbc = NULL;
