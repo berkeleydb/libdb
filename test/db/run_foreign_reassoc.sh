@@ -40,6 +40,8 @@ fi
 
 EXTRALIBS=""
 for l in $(pkg-config --libs liburing 2>/dev/null) ; do EXTRALIBS="$EXTRALIBS $l" ; done
+# A static libdb built with --enable-tls pulls in libssl/libcrypto.
+for _dbl in "$BUILD"/libdb.a "$BUILD"/.libs/libdb-*.a "$BUILD"/.libs/libdb-*.so; do [ -f "$_dbl" ] && nm "$_dbl" 2>/dev/null | grep -q "U SSL_CTX_new" && { EXTRALIBS="$EXTRALIBS -lssl -lcrypto"; break; }; done
 
 # A sanitizer-built libdb (the lockmatrix / CI typed-job configuration) needs
 # the driver built with the same compiler and -fsanitize, or it does not link.

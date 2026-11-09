@@ -21,6 +21,7 @@ process. Status: Draft · Accepted · Rejected · Superseded · Implemented.
 | [0014](0014-typed-data-and-constraints.md) | Typed data and constraints: a codec socket ("modem") and a constraint layer, configure-time optional | Implemented (Phases 0–1), opt-in `--enable-typed`; see [inclusion evaluation](0014/INCLUSION-EVALUATION.md) |
 | [0015](0015-multicore-scalability.md) | Multi-core scalability audit: every serialisation point, and the order to remove them | Draft |
 | [0016](0016-rust-zig-bindings.md) | Rust and Zig language bindings: idiomatic, zero-copy-capable API shims over the C library, with native-format docs and tests | Draft |
+| [0018](0018-repmgr-tls.md) | TLS 1.3 with mutual authentication on every Replication Manager connection (OpenSSL 3.x, optional `--enable-tls`/`-Dtls=enabled`, off by default) | Draft | Normative
 | [0020](0020-soname-bump.md) | Bump the soname to `libdb-2026.1` for the handle-layout change (A1); the versioning rule for ABI breaks on master | Implemented | Normative |
 | [0021](0021-transient-cursor-cache.md) | Per-thread transient-cursor cache: reuse `DB->get`/`put`/`del` transient cursors from process-local thread state, removing the cursor-queue partition mutex from the common path (O-D1) | Draft | Normative |
 | [0023](0023-ssi-multilevel-conflict-detection.md) | SSI cross-leaf write-skew miss — **Withdrawn**: diagnosed as a plain bug and fixed directly (no design/format change); kept as a postmortem | Withdrawn |

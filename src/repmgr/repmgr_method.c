@@ -95,6 +95,15 @@ __repmgr_start(dbenv, nthreads, flags)
 	if (APP_IS_BASEAPI(env))
 		return (repmgr_only(env, "repmgr_start"));
 
+#ifdef HAVE_REPMGR_SSL
+	/*
+	 * Build the process-local TLS context now, before any connection is
+	 * made or accepted.  A no-op if TLS was not configured.
+	 */
+	if ((ret = __repmgr_ssl_init(env)) != 0)
+		return (ret);
+#endif
+
 	/* Check that the required initialization has been done. */
 	if (!IS_VALID_EID(db_rep->self_eid)) {
 		__db_errx(env, DB_STR("3637",
@@ -693,6 +702,20 @@ __repmgr_close(env)
 		db_rep->sites = NULL;
 	}
 
+#ifdef HAVE_REPMGR_SSL
+	__repmgr_ssl_destroy(env);
+	if (db_rep->tls_cert_file != NULL)
+		__os_free(env, db_rep->tls_cert_file);
+	if (db_rep->tls_key_file != NULL)
+		__os_free(env, db_rep->tls_key_file);
+	if (db_rep->tls_ca_file != NULL)
+		__os_free(env, db_rep->tls_ca_file);
+	if (db_rep->tls_pins != NULL)
+		__os_free(env, db_rep->tls_pins);
+	db_rep->tls_cert_file = db_rep->tls_key_file = db_rep->tls_ca_file =
+	    db_rep->tls_pins = NULL;
+#endif
+
 	return (ret);
 }
 
@@ -800,6 +823,139 @@ __repmgr_set_ack_policy(dbenv, policy)
 		    "unknown ack_policy in DB_ENV->repmgr_set_ack_policy"));
 		return (EINVAL);
 	}
+}
+
+/*
+ * __repmgr_add_tls_pin --
+ *	Add one SHA-256 leaf-certificate fingerprint (64 hex digits, ':'
+ *	separators allowed) to the pin list read by __repmgr_ssl_verify_cb.
+ *	Reached only from the DB_CONFIG "repmgr_tls ... pin <hex>" directive.
+ *
+ * PUBLIC: int __repmgr_add_tls_pin __P((DB_ENV *, const char *));
+ */
+int
+__repmgr_add_tls_pin(dbenv, pin)
+	DB_ENV *dbenv;
+	const char *pin;
+{
+#ifdef HAVE_REPMGR_SSL
+	DB_REP *db_rep;
+	ENV *env;
+	size_t len, n;
+	const char *q;
+	char hex[65], *p;
+	int ret;
+
+	env = dbenv->env;
+	db_rep = env->rep_handle;
+	for (n = 0, q = pin; *q != '\0'; q++) {
+		if (*q == ':')
+			continue;
+		if (n == 64 || !isxdigit((unsigned char)*q))
+			goto bad;
+		hex[n++] = *q;
+	}
+	if (n != 64)
+		goto bad;
+	hex[64] = '\0';
+
+	/* NUL-separated, double-NUL-terminated: append "hex\0", keep "\0". */
+	len = 0;
+	if ((p = db_rep->tls_pins) != NULL)
+		for (; p[len] != '\0'; len += strlen(&p[len]) + 1)
+			;
+	if ((ret = __os_realloc(env, len + 65 + 1, &db_rep->tls_pins)) != 0)
+		return (ret);
+	memcpy(&db_rep->tls_pins[len], hex, 65);
+	db_rep->tls_pins[len + 65] = '\0';
+	return (0);
+bad:	__db_errx(env, DB_STR_A("5459",
+	    "repmgr_tls pin: %s is not a SHA-256 hex fingerprint", "%s"), pin);
+	return (EINVAL);
+#else
+	/* Unreachable via DB_CONFIG: __repmgr_set_tls has already failed. */
+	COMPQUIET(dbenv, NULL);
+	COMPQUIET(pin, NULL);
+	return (DB_OPNOTSUP);
+#endif
+}
+
+/*
+ * __repmgr_set_tls --
+ *	Configure TLS for repmgr connections.  Stores the cert/key/CA paths and
+ *	flags in the process-local DB_REP; the SSL_CTX is built at repmgr start.
+ *	Without --enable-tls this is a stub returning DB_OPNOTSUP.
+ *
+ * PUBLIC: int __repmgr_set_tls
+ * PUBLIC:     __P((DB_ENV *, const char *, const char *, const char *,
+ * PUBLIC:     u_int32_t));
+ */
+int
+__repmgr_set_tls(dbenv, cert_file, key_file, ca_file, flags)
+	DB_ENV *dbenv;
+	const char *cert_file, *key_file, *ca_file;
+	u_int32_t flags;
+{
+#ifdef HAVE_REPMGR_SSL
+	DB_REP *db_rep;
+	DB_THREAD_INFO *ip;
+	ENV *env;
+	int ret;
+
+	env = dbenv->env;
+	db_rep = env->rep_handle;
+	ENV_NOT_CONFIGURED(
+	    env, db_rep->region, "DB_ENV->repmgr_set_tls", DB_INIT_REP);
+	if (APP_IS_BASEAPI(env))
+		return (repmgr_only(env, "repmgr_set_tls"));
+
+	if (cert_file == NULL || key_file == NULL) {
+		__db_errx(env, DB_STR("5455",
+		    "DB_ENV->repmgr_set_tls requires a cert and key file"));
+		return (EINVAL);
+	}
+	if (LF_ISSET(DB_REPMGR_TLS_VERIFY_PEER) &&
+	    LF_ISSET(DB_REPMGR_TLS_NO_VERIFY)) {
+		__db_errx(env, DB_STR("5456",
+	    "repmgr_set_tls: VERIFY_PEER and NO_VERIFY are incompatible"));
+		return (EINVAL);
+	}
+
+	/* Free any prior configuration (re-set is allowed before start). */
+	if (db_rep->tls_cert_file != NULL)
+		__os_free(env, db_rep->tls_cert_file);
+	if (db_rep->tls_key_file != NULL)
+		__os_free(env, db_rep->tls_key_file);
+	if (db_rep->tls_ca_file != NULL)
+		__os_free(env, db_rep->tls_ca_file);
+	db_rep->tls_cert_file = db_rep->tls_key_file = db_rep->tls_ca_file =
+	    NULL;
+
+	if ((ret = __os_strdup(env, cert_file, &db_rep->tls_cert_file)) != 0 ||
+	    (ret = __os_strdup(env, key_file, &db_rep->tls_key_file)) != 0)
+		return (ret);
+	if (ca_file != NULL &&
+	    (ret = __os_strdup(env, ca_file, &db_rep->tls_ca_file)) != 0)
+		return (ret);
+
+	/* Verification is on by default unless NO_VERIFY was requested. */
+	db_rep->tls_flags = 0;
+	if (!LF_ISSET(DB_REPMGR_TLS_NO_VERIFY))
+		FLD_SET(db_rep->tls_flags, REPMGR_TLS_VERIFY_PEER);
+	if (LF_ISSET(DB_REPMGR_TLS_REQUIRE))
+		FLD_SET(db_rep->tls_flags, REPMGR_TLS_REQUIRE);
+
+	APP_SET_REPMGR(env);
+	return (0);
+#else
+	COMPQUIET(cert_file, NULL);
+	COMPQUIET(key_file, NULL);
+	COMPQUIET(ca_file, NULL);
+	COMPQUIET(flags, 0);
+	__db_errx(dbenv->env, DB_STR("5457",
+    "library build did not include TLS support (configure --enable-tls)"));
+	return (DB_OPNOTSUP);
+#endif
 }
 
 /*
@@ -1220,7 +1376,7 @@ establish_connection(env, eid, connp)
 	conn->type = APP_CONNECTION;
 
 	/* Read a handshake msg, to get version confirmation and parameters. */
-	if ((ret = __repmgr_read_conn(conn)) != 0)
+	if ((ret = __repmgr_read_conn(env, conn)) != 0)
 		goto out;
 	/*
 	 * We can only get here after having read the full 9 bytes that we
@@ -1237,7 +1393,7 @@ establish_connection(env, eid, connp)
 		goto out;
 	alloc = TRUE;
 
-	if ((ret = __repmgr_read_conn(conn)) != 0)
+	if ((ret = __repmgr_read_conn(env, conn)) != 0)
 		goto out;
 
 	/*
@@ -2493,7 +2649,7 @@ read_own_msg(env, conn, typep, bufp, lenp)
 	int ret;
 
 	__repmgr_reset_for_reading(conn);
-	if ((ret = __repmgr_read_conn(conn)) != 0)
+	if ((ret = __repmgr_read_conn(env, conn)) != 0)
 		goto err;
 	ret = __repmgr_msg_hdr_unmarshal(env, &msg_hdr,
 	    conn->msg_hdr_buf, __REPMGR_MSG_HDR_SIZE, NULL);
@@ -2513,7 +2669,7 @@ read_own_msg(env, conn, typep, bufp, lenp)
 		conn->input.rep_message = NULL;
 
 		__repmgr_add_buffer(&conn->iovecs, buf, size);
-		if ((ret = __repmgr_read_conn(conn)) != 0) {
+		if ((ret = __repmgr_read_conn(env, conn)) != 0) {
 			__os_free(env, buf);
 			goto err;
 		}
@@ -2545,7 +2701,7 @@ make_request_conn(env, addr, connp)
 	conn->type = APP_CONNECTION;
 
 	/* Read a handshake msg, to get version confirmation and parameters. */
-	if ((ret = __repmgr_read_conn(conn)) != 0)
+	if ((ret = __repmgr_read_conn(env, conn)) != 0)
 		goto err;
 	/*
 	 * We can only get here after having read the full 9 bytes that we
@@ -2562,7 +2718,7 @@ make_request_conn(env, addr, connp)
 		goto err;
 	alloc = TRUE;
 
-	if ((ret = __repmgr_read_conn(conn)) != 0)
+	if ((ret = __repmgr_read_conn(env, conn)) != 0)
 		goto err;
 
 	/*

@@ -289,6 +289,7 @@ typedef struct __repmgr_message {
 } REPMGR_MESSAGE;
 
 typedef enum {
+	HANDSHAKE_PHASE,
 	SIZES_PHASE,
 	DATA_PHASE
 } phase_t;
@@ -305,6 +306,21 @@ struct __repmgr_connection {
 	socket_t fd;
 #ifdef DB_WIN32
 	WSAEVENT event_object;
+#endif
+#ifdef HAVE_REPMGR_SSL
+	/*
+	 * TLS (OpenSSL) state for this connection, when TLS is configured.
+	 * ssl == NULL means this connection is plaintext (TLS off, or a
+	 * plaintext peer we chose to allow).  These are process-local: an
+	 * SSL object never lives in the shared region.  ssl_flags carries the
+	 * direction OpenSSL last asked for so the select() loop can pick the
+	 * right fd_set; see repmgr_tls.c.
+	 */
+	void		*ssl;		/* SSL *, opaque outside repmgr_tls.c */
+#define	REPMGR_SSL_HANDSHAKING		0x01 /* TLS handshake not yet done. */
+#define	REPMGR_SSL_WANT_WRITE_TO_READ	0x02 /* read blocked on a write. */
+#define	REPMGR_SSL_WANT_READ_TO_WRITE	0x04 /* write blocked on a read. */
+	u_int32_t	ssl_flags;
 #endif
 
 	/*

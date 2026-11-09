@@ -857,6 +857,24 @@ struct __db_rep {
 	/* Application's message dispatch call-back function. */
 	void  (*msg_dispatch) __P((DB_ENV *, DB_CHANNEL *,
 		DBT *, u_int32_t, u_int32_t));
+
+#ifdef HAVE_REPMGR_SSL
+	/*
+	 * TLS (OpenSSL) configuration for repmgr connections (RFC 0018).
+	 * Process-local: these never live in the shared region.  tls_ctx is
+	 * the per-process SSL_CTX, created lazily at repmgr start when a cert
+	 * is configured.  The paths/flags come from DB_ENV->repmgr_set_tls or
+	 * the repmgr_tls_* DB_CONFIG directives.
+	 */
+	void		*tls_ctx;	/* SSL_CTX *, opaque outside repmgr_tls.c */
+	char		*tls_cert_file;
+	char		*tls_key_file;
+	char		*tls_ca_file;
+	char		*tls_pins;	/* NUL-separated SHA-256 hex fingerprints. */
+#define	REPMGR_TLS_VERIFY_PEER	0x01	/* Require+verify a peer cert. */
+#define	REPMGR_TLS_REQUIRE	0x02	/* Refuse plaintext peers. */
+	u_int32_t	tls_flags;
+#endif
 #endif  /* HAVE_REPLICATION_THREADS */
 };
 

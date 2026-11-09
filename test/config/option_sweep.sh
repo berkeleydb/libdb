@@ -105,6 +105,7 @@ localization|--enable-localization
 stripped_messages|--enable-stripped_messages
 uniquename|--with-uniquename=_libdbsweep
 typed|--enable-typed
+tls|--enable-tls
 '
 
 # ---------------------------------------------------------------------------

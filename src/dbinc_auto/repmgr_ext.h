@@ -51,6 +51,8 @@ int __repmgr_start_selector __P((ENV *));
 int __repmgr_close __P((ENV *));
 int __repmgr_stop __P((ENV *));
 int __repmgr_set_ack_policy __P((DB_ENV *, int));
+int __repmgr_add_tls_pin __P((DB_ENV *, const char *));
+int __repmgr_set_tls __P((DB_ENV *, const char *, const char *, const char *, u_int32_t));
 int __repmgr_get_ack_policy __P((DB_ENV *, int *));
 int __repmgr_env_create __P((ENV *, DB_REP *));
 void __repmgr_env_destroy __P((ENV *, DB_REP *));
@@ -143,7 +145,7 @@ int __repmgr_check_timeouts __P((ENV *));
 int __repmgr_first_try_connections __P((ENV *));
 int __repmgr_send_v1_handshake __P((ENV *, REPMGR_CONNECTION *, void *, size_t));
 int __repmgr_read_from_site __P((ENV *, REPMGR_CONNECTION *));
-int __repmgr_read_conn __P((REPMGR_CONNECTION *));
+int __repmgr_read_conn __P((ENV *, REPMGR_CONNECTION *));
 int __repmgr_prepare_simple_input __P((ENV *, REPMGR_CONNECTION *, __repmgr_msg_hdr_args *));
 int __repmgr_send_handshake __P((ENV *, REPMGR_CONNECTION *, void *, size_t, u_int32_t));
 int __repmgr_find_version_info __P((ENV *, REPMGR_CONNECTION *, DBT *));
@@ -160,6 +162,12 @@ int __repmgr_get_ack_policy __P((DB_ENV *, int *));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
 int __repmgr_set_ack_policy __P((DB_ENV *, int));
+#endif
+#ifndef HAVE_REPLICATION_THREADS
+int __repmgr_add_tls_pin __P((DB_ENV *, const char *));
+#endif
+#ifndef HAVE_REPLICATION_THREADS
+int __repmgr_set_tls __P((DB_ENV *, const char *, const char *, const char *, u_int32_t));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
 int __repmgr_site __P((DB_ENV *, const char *, u_int, DB_SITE **, u_int32_t));
@@ -193,6 +201,30 @@ int __repmgr_set_msg_dispatch __P((DB_ENV *, void (*)(DB_ENV *, DB_CHANNEL *, DB
 #endif
 #ifndef HAVE_REPLICATION_THREADS
 int __repmgr_init_recover __P((ENV *, DB_DISTAB *));
+#endif
+#ifdef HAVE_REPMGR_SSL
+int __repmgr_ssl_handshake_block __P((ENV *, REPMGR_CONNECTION *));
+#endif
+#ifdef HAVE_REPMGR_SSL
+int __repmgr_ssl_init __P((ENV *));
+#endif
+#ifdef HAVE_REPMGR_SSL
+void __repmgr_ssl_destroy __P((ENV *));
+#endif
+#ifdef HAVE_REPMGR_SSL
+int __repmgr_ssl_conn_init __P((ENV *, REPMGR_CONNECTION *, int));
+#endif
+#ifdef HAVE_REPMGR_SSL
+void __repmgr_ssl_conn_destroy __P((REPMGR_CONNECTION *));
+#endif
+#ifdef HAVE_REPMGR_SSL
+int __repmgr_ssl_handshake __P((ENV *, REPMGR_CONNECTION *));
+#endif
+#ifdef HAVE_REPMGR_SSL
+int __repmgr_ssl_read __P((ENV *, REPMGR_CONNECTION *, void *, size_t, size_t *));
+#endif
+#ifdef HAVE_REPMGR_SSL
+int __repmgr_ssl_write __P((ENV *, REPMGR_CONNECTION *, const void *, size_t, size_t *));
 #endif
 int __repmgr_schedule_connection_attempt __P((ENV *, int, int));
 int __repmgr_is_server __P((ENV *, REPMGR_SITE *));
