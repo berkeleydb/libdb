@@ -37,13 +37,19 @@ on:
       - 'test/isolation/**'
       - 'test/soak/**'
       - 'test/lockmatrix/**'
-      - 'test/c/flag_behaviour.c'
-      - 'test/c/flag-run.sh'
+      - 'test/c/**'
+      - 'test/bench/opt_*'
       - 'src/lock/**'
       - 'src/txn/**'
       - 'src/mp/**'
       - 'src/os/**'
       - 'src/log/**'
+      # The leak drivers and opt_teeth exercise the cursor and btree paths
+      # too: #238 (src/db) broke them, and this filter skipped them on its PR.
+      - 'src/db/**'
+      - 'src/btree/**'
+      - 'src/env/**'
+      - 'src/mutex/**'
       - 'dist/**'
       - '.github/workflows/test-tiers.yml'
   schedule:
