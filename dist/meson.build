@@ -62,7 +62,8 @@ foreach fn : [
     'clock_gettime', 'ctime_r', 'fchmod', 'fclose', 'fcntl', 'fdatasync',
     'fgetc', 'fgets', 'fopen', 'ftruncate', 'fwrite', 'getaddrinfo', 'getcwd',
     'getenv', 'getgid', 'getopt', 'getrusage', 'gettimeofday', 'getuid',
-    'hstrerror', 'isalpha', 'isdigit', 'isprint', 'isspace', 'localtime',
+    'explicit_bzero', 'hstrerror', 'isalpha', 'isdigit', 'isprint', 'isspace',
+    'localtime', 'memset_s',
     'memcmp', 'memcpy', 'memmove', 'mlock', 'mmap', 'mprotect', 'munlock',
     'munmap', 'pread', 'printf', 'pwrite', 'qsort', 'raise', 'rand', 'random',
     'sched_yield', 'select', 'setgid', 'setuid', 'shmget', 'sigaction',
@@ -174,6 +175,16 @@ endif
 if get_option('dtrace').enabled()
   error('-Ddtrace=enabled is not implemented in the meson build yet; ' +
         'use dist/configure --enable-dtrace')
+endif
+
+# RFC 0019 TPM 2.0 key provider.  src/crypto/provider_tpm.c is in the source
+# list and whole-file guarded on HAVE_TPM (the os_aio_uring.c pattern).
+tpm_deps = []
+if get_option('tpm').enabled()
+  tss2_esys = dependency('tss2-esys', required: true)
+  tss2_mu = dependency('tss2-mu', required: true)
+  cdata.set('HAVE_TPM', 1)
+  tpm_deps = [tss2_esys, tss2_mu]
 endif
 
 # TLS (OpenSSL) for the Replication Manager (RFC 0018); mirrors --enable-tls.
@@ -452,9 +463,12 @@ libdb_srcnames = [
   'src/common/zerofill.c',
   'src/crypto/aes_method.c',
   'src/crypto/crypto.c',
+  'src/crypto/kdf.c',
   'src/crypto/rijndael/rijndael-alg-fst.c',
   'src/crypto/rijndael/rijndael-api-fst.c',
   'src/crypto/mersenne/mt19937db.c',
+  'src/crypto/provider.c',
+  'src/crypto/provider_tpm.c',
   'src/db/crdel_auto.c',
   'src/db/crdel_autop.c',
   'src/db/crdel_rec.c',
@@ -547,6 +561,7 @@ libdb_srcnames = [
   'src/heap/heap.c',
   'src/hmac/hmac.c',
   'src/hmac/sha1.c',
+  'src/hmac/sha256.c',
   'src/lock/lock_deadlock.c',
   'src/lock/lock_failchk.c',
   'src/lock/lock_id.c',
@@ -742,7 +757,7 @@ db_libname = 'db-@0@.@1@'.format(db_compat_major, db_compat_minor)
 
 libdb = library(db_libname, libdb_sources, clib_sources, db_h, db_int_h, db_int_def_h, clib_port_h,
   include_directories: inc,
-  dependencies: [thread_dep, uring_dep, aio_dep, tls_dep],
+  dependencies: [thread_dep, uring_dep, aio_dep, tls_dep] + tpm_deps,
   gnu_symbol_visibility: 'default',
   install: true)
 

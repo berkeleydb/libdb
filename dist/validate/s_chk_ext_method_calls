@@ -23,6 +23,10 @@ echo ========================================================
 # MEANT to call out through them, so the check's premise (DB must not call its
 # own public API internally) does not apply.  Excluded by exact member name so
 # a real new ->compare()-style DB method would still have to be considered.
+# get_key/release/rotate are the RFC 0019 key-provider callbacks (struct
+# __db_crypto_provider): the application supplies them and the library calls
+# out through them.  get_key matched only because DB_SEQUENCE also has a
+# get_key method.  The DB_SEQUENCE method is called only via the public API.
 m=`grep '(\*[a-z][_a-z]*)' $s/dbinc/db.in |
    sed -e 's/^[^(]*(\*//' \
        -e 's/).*//' \
@@ -53,7 +57,10 @@ m=`grep '(\*[a-z][_a-z]*)' $s/dbinc/db.in |
        -e '/^hash$/d' \
        -e '/^validate$/d' \
        -e '/^sortkey$/d' \
-       -e '/^field$/d' |
+       -e '/^field$/d' \
+       -e '/^get_key$/d' \
+       -e '/^release$/d' \
+       -e '/^rotate$/d' |
    sort -u`
 
 (cd $s && for i in $m; do

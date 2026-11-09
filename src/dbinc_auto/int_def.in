@@ -683,7 +683,21 @@
 #define	__crypto_algsetup __crypto_algsetup@DB_VERSION_UNIQUE_NAME@
 #define	__crypto_decrypt_meta __crypto_decrypt_meta@DB_VERSION_UNIQUE_NAME@
 #define	__crypto_set_passwd __crypto_set_passwd@DB_VERSION_UNIQUE_NAME@
+#define	__db_aes_keywrap __db_aes_keywrap@DB_VERSION_UNIQUE_NAME@
+#define	__db_aes_keyunwrap __db_aes_keyunwrap@DB_VERSION_UNIQUE_NAME@
+#define	__db_crypto_make_verifier __db_crypto_make_verifier@DB_VERSION_UNIQUE_NAME@
 #define	__db_generate_iv __db_generate_iv@DB_VERSION_UNIQUE_NAME@
+#define	__crypto_keyfile_check __crypto_keyfile_check@DB_VERSION_UNIQUE_NAME@
+#define	__crypto_keyfile_provider __crypto_keyfile_provider@DB_VERSION_UNIQUE_NAME@
+#ifdef HAVE_TPM
+#define	__crypto_tpm_provider __crypto_tpm_provider@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TPM
+#define	__crypto_tpm_inspect __crypto_tpm_inspect@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_TPM
+#define	__crypto_tpm_seal __crypto_tpm_seal@DB_VERSION_UNIQUE_NAME@
+#endif
 #define	__db_rijndaelKeySetupEnc __db_rijndaelKeySetupEnc@DB_VERSION_UNIQUE_NAME@
 #define	__db_rijndaelKeySetupDec __db_rijndaelKeySetupDec@DB_VERSION_UNIQUE_NAME@
 #define	__db_rijndaelEncrypt __db_rijndaelEncrypt@DB_VERSION_UNIQUE_NAME@
@@ -767,6 +781,9 @@
 #define	__env_set_memory_max __env_set_memory_max@DB_VERSION_UNIQUE_NAME@
 #define	__env_get_encrypt_flags __env_get_encrypt_flags@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_encrypt __env_set_encrypt@DB_VERSION_UNIQUE_NAME@
+#define	__env_set_encrypt_provider __env_set_encrypt_provider@DB_VERSION_UNIQUE_NAME@
+#define	__env_set_encrypt_keyfile __env_set_encrypt_keyfile@DB_VERSION_UNIQUE_NAME@
+#define	__env_set_encrypt_tpm __env_set_encrypt_tpm@DB_VERSION_UNIQUE_NAME@
 #define	__env_map_flags __env_map_flags@DB_VERSION_UNIQUE_NAME@
 #define	__env_fetch_flags __env_fetch_flags@DB_VERSION_UNIQUE_NAME@
 #define	__env_set_flags __env_set_flags@DB_VERSION_UNIQUE_NAME@
@@ -1113,6 +1130,13 @@
 #define	__db_SHA1Init __db_SHA1Init@DB_VERSION_UNIQUE_NAME@
 #define	__db_SHA1Update __db_SHA1Update@DB_VERSION_UNIQUE_NAME@
 #define	__db_SHA1Final __db_SHA1Final@DB_VERSION_UNIQUE_NAME@
+#define	__db_SHA256Init __db_SHA256Init@DB_VERSION_UNIQUE_NAME@
+#define	__db_SHA256Update __db_SHA256Update@DB_VERSION_UNIQUE_NAME@
+#define	__db_SHA256Final __db_SHA256Final@DB_VERSION_UNIQUE_NAME@
+#define	__db_hmac_sha256 __db_hmac_sha256@DB_VERSION_UNIQUE_NAME@
+#define	__db_pbkdf2_sha256 __db_pbkdf2_sha256@DB_VERSION_UNIQUE_NAME@
+#define	__db_ct_memeq __db_ct_memeq@DB_VERSION_UNIQUE_NAME@
+#define	__db_explicit_bzero __db_explicit_bzero@DB_VERSION_UNIQUE_NAME@
 #define	__lock_vec_pp __lock_vec_pp@DB_VERSION_UNIQUE_NAME@
 #define	__lock_sicleanup __lock_sicleanup@DB_VERSION_UNIQUE_NAME@
 #define	__lock_sicommit __lock_sicommit@DB_VERSION_UNIQUE_NAME@

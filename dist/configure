@@ -880,6 +880,7 @@ enable_dump185
 enable_java
 enable_mingw
 enable_o_direct
+enable_tpm
 enable_posixmutexes
 enable_pthread_self
 enable_pthread_api
@@ -1598,6 +1599,8 @@ Optional Features:
   --enable-java           Build Java API.
   --enable-mingw          Build Berkeley DB for MinGW.
   --enable-o_direct       Enable the O_DIRECT flag for direct I/O.
+  --enable-tpm            Enable the TPM 2.0 encryption key provider (needs
+                          libtss2).
   --enable-posixmutexes   Force use of POSIX standard mutexes.
 
   --enable-sql            Build the SQL API.
@@ -4076,6 +4079,20 @@ fi
 
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $db_cv_o_direct" >&5
 printf '%s\n' "$db_cv_o_direct" >&6; }
+
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking if --enable-tpm option specified" >&5
+printf %s "checking if --enable-tpm option specified... " >&6; }
+# Check whether --enable-tpm was given.
+if test ${enable_tpm+y}
+then :
+  enableval=$enable_tpm; db_cv_tpm="$enable_tpm"
+else case e in #(
+  e) db_cv_tpm="no" ;;
+esac
+fi
+
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $db_cv_tpm" >&5
+printf '%s\n' "$db_cv_tpm" >&6; }
 
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking if --enable-posixmutexes option specified" >&5
 printf %s "checking if --enable-posixmutexes option specified... " >&6; }
@@ -20427,7 +20444,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20413 "configure" */
+/* #line 20430 "configure" */
 public class Test {
 }
 EOF
@@ -20722,7 +20739,7 @@ EOF
 if uudecode$EXEEXT Test.uue; then
         ac_cv_prog_uudecode_base64=yes
 else
-        echo "configure: 20708: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
+        echo "configure: 20725: uudecode had trouble decoding base 64 file 'Test.uue'" >&5
         echo "configure: failed file was:" >&5
         cat Test.uue >&5
         ac_cv_prog_uudecode_base64=no
@@ -20854,7 +20871,7 @@ else case e in #(
 JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 cat << \EOF > $JAVA_TEST
-/* #line 20840 "configure" */
+/* #line 20857 "configure" */
 public class Test {
 }
 EOF
@@ -20891,7 +20908,7 @@ JAVA_TEST=Test.java
 CLASS_TEST=Test.class
 TEST=Test
 cat << \EOF > $JAVA_TEST
-/* [#]line 20877 "configure" */
+/* [#]line 20894 "configure" */
 public class Test {
 public static void main (String args[]) {
         System.exit (0);
@@ -27437,6 +27454,28 @@ then :
 fi
 
 
+# RFC 0019 key hygiene: zero secrets so the compiler cannot elide it, and lock
+# key pages out of swap.  All optional; sha256.c and os_mlock.c fall back.
+ac_fn_c_check_func "$LINENO" "explicit_bzero" "ac_cv_func_explicit_bzero"
+if test "x$ac_cv_func_explicit_bzero" = xyes
+then :
+  printf '%s\n' "#define HAVE_EXPLICIT_BZERO 1" >>confdefs.h
+
+fi
+ac_fn_c_check_func "$LINENO" "memset_s" "ac_cv_func_memset_s"
+if test "x$ac_cv_func_memset_s" = xyes
+then :
+  printf '%s\n' "#define HAVE_MEMSET_S 1" >>confdefs.h
+
+fi
+ac_fn_c_check_func "$LINENO" "mlock" "ac_cv_func_mlock"
+if test "x$ac_cv_func_mlock" = xyes
+then :
+  printf '%s\n' "#define HAVE_MLOCK 1" >>confdefs.h
+
+fi
+
+
 
 
 ac_fn_c_check_func "$LINENO" "gettimeofday" "ac_cv_func_gettimeofday"
@@ -28786,6 +28825,136 @@ fi
 	fi
 else
 	CRYPTO_OBJS="crypto_stub${o}"
+fi
+
+# The TPM 2.0 key provider (RFC 0019).  Off by default so the default build
+# gains no dependency.  Requires crypto and libtss2 ESAPI.
+if test "$db_cv_tpm" = "yes"; then
+	if test "$db_cv_build_cryptography" = "no"; then
+		as_fn_error $? "--enable-tpm requires cryptography support" "$LINENO" 5
+	fi
+	ac_fn_c_check_header_compile "$LINENO" "tss2/tss2_esys.h" "ac_cv_header_tss2_tss2_esys_h" "$ac_includes_default"
+if test "x$ac_cv_header_tss2_tss2_esys_h" = xyes
+then :
+
+else case e in #(
+  e) as_fn_error $? "--enable-tpm requires the libtss2 ESAPI headers (tss2/tss2_esys.h)" "$LINENO" 5 ;;
+esac
+fi
+
+	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for Esys_Initialize in -ltss2-esys" >&5
+printf %s "checking for Esys_Initialize in -ltss2-esys... " >&6; }
+if test ${ac_cv_lib_tss2_esys_Esys_Initialize+y}
+then :
+  printf %s "(cached) " >&6
+else case e in #(
+  e) ac_check_lib_save_LIBS=$LIBS
+LIBS="-ltss2-esys -ltss2-mu $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.
+   The 'extern "C"' is for builds by C++ compilers;
+   although this is not generally supported in C code supporting it here
+   has little cost and some practical benefit (sr 110532).  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char Esys_Initialize (void);
+int
+main (void)
+{
+return Esys_Initialize ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_tss2_esys_Esys_Initialize=yes
+else case e in #(
+  e) ac_cv_lib_tss2_esys_Esys_Initialize=no ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS ;;
+esac
+fi
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_tss2_esys_Esys_Initialize" >&5
+printf '%s\n' "$ac_cv_lib_tss2_esys_Esys_Initialize" >&6; }
+if test "x$ac_cv_lib_tss2_esys_Esys_Initialize" = xyes
+then :
+  printf '%s\n' "#define HAVE_LIBTSS2_ESYS 1" >>confdefs.h
+
+  LIBS="-ltss2-esys $LIBS"
+
+else case e in #(
+  e) as_fn_error $? "--enable-tpm requires libtss2-esys" "$LINENO" 5 ;;
+esac
+fi
+
+	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking for Tss2_MU_TPM2B_PUBLIC_Marshal in -ltss2-mu" >&5
+printf %s "checking for Tss2_MU_TPM2B_PUBLIC_Marshal in -ltss2-mu... " >&6; }
+if test ${ac_cv_lib_tss2_mu_Tss2_MU_TPM2B_PUBLIC_Marshal+y}
+then :
+  printf %s "(cached) " >&6
+else case e in #(
+  e) ac_check_lib_save_LIBS=$LIBS
+LIBS="-ltss2-mu  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.
+   The 'extern "C"' is for builds by C++ compilers;
+   although this is not generally supported in C code supporting it here
+   has little cost and some practical benefit (sr 110532).  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char Tss2_MU_TPM2B_PUBLIC_Marshal (void);
+int
+main (void)
+{
+return Tss2_MU_TPM2B_PUBLIC_Marshal ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+  ac_cv_lib_tss2_mu_Tss2_MU_TPM2B_PUBLIC_Marshal=yes
+else case e in #(
+  e) ac_cv_lib_tss2_mu_Tss2_MU_TPM2B_PUBLIC_Marshal=no ;;
+esac
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS ;;
+esac
+fi
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_tss2_mu_Tss2_MU_TPM2B_PUBLIC_Marshal" >&5
+printf '%s\n' "$ac_cv_lib_tss2_mu_Tss2_MU_TPM2B_PUBLIC_Marshal" >&6; }
+if test "x$ac_cv_lib_tss2_mu_Tss2_MU_TPM2B_PUBLIC_Marshal" = xyes
+then :
+  printf '%s\n' "#define HAVE_LIBTSS2_MU 1" >>confdefs.h
+
+  LIBS="-ltss2-mu $LIBS"
+
+fi
+
+	printf '%s\n' "#define HAVE_TPM 1" >>confdefs.h
+
+
+	# Append to the shared-library link line (LIBSO_LIBS), not only the
+	# autoconf LIBS, mirroring the liburing pattern above.
+	LIBSO_LIBS="$LIBSO_LIBS -ltss2-esys -ltss2-mu"
+	LIBS="$LIBS -ltss2-esys -ltss2-mu"
+	ADDITIONAL_OBJS="$ADDITIONAL_OBJS provider_tpm${o}"
 fi
 
 # The mutex code can be disabled, and if there aren't any mutexes, then there's

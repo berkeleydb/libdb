@@ -163,6 +163,7 @@ EXCLUDED='
 java|needs a JDK plus the Java build chain; not installed on the benchmark box
 jdbc|needs a JDK and an external SQLite JDBC source tree (--with-jdbc=DIR)
 tcl|needs tclsh + tcl headers; the tcl BINDINGS are already covered by the tcl tier in ci.yml
+tpm|needs libtss2 (ESAPI/FAPI) plus a TPM 2.0 device or swtpm; neither is present on stock CI runners. Functional coverage is test/db/run_crypto_tpm.sh, which SKIPs without swtpm
 mingw|cross-compiles for Windows; needs a mingw toolchain and cannot be run here
 dtrace|needs a DTrace-capable kernel (Solaris/macOS); Linux has no dtrace provider here
 systemtap|needs systemtap headers/probes (sys/sdt.h) and a stap-capable kernel

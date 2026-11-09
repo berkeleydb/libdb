@@ -137,7 +137,7 @@ When you are done using your environment, close it using the <a href="envclose.m
 <td>Add an environment data directory</td>
 </tr>
 <tr>
-<td><a href="envset_encrypt.md" class="xref" title="DB_ENV-&gt;set_encrypt()">DB_ENV-&gt;set_encrypt()</a>, <a href="envget_encrypt_flags.md" class="xref" title="DB_ENV-&gt;get_encrypt_flags()">DB_ENV-&gt;get_encrypt_flags()</a></td>
+<td><a href="envset_encrypt.md" class="xref" title="DB_ENV-&gt;set_encrypt()">DB_ENV-&gt;set_encrypt()</a>, <a href="envget_encrypt_flags.md" class="xref" title="DB_ENV-&gt;get_encrypt_flags()">DB_ENV-&gt;get_encrypt_flags()</a>, <a href="envset_encrypt_keyfile.md" class="xref" title="DB_ENV-&gt;set_encrypt_keyfile()">DB_ENV-&gt;set_encrypt_keyfile()</a>, <a href="envset_encrypt_tpm.md" class="xref" title="DB_ENV-&gt;set_encrypt_tpm()">DB_ENV-&gt;set_encrypt_tpm()</a>, <a href="envset_encrypt_provider.md" class="xref" title="DB_ENV-&gt;set_encrypt_provider()">DB_ENV-&gt;set_encrypt_provider()</a></td>
 <td>Set/get the environment cryptographic key</td>
 </tr>
 <tr>

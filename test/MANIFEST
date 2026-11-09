@@ -501,6 +501,11 @@ db	run_qam_inorder_consume
 db	run_u9_serializable
 db	run_u8_backup_config
 db	run_handle_sizes
+db	run_crypto_secret_leak
+db	run_crypto_compat
+db	run_crypto_keyfile
+db	run_crypto_tpm
+db	run_crypto_mp_join
 # rfc/0020: a new compatibility level refuses the previous level's region and
 # reads its databases and logs.  SKIPs unless OLD_BUILD points at a build of
 # the previous level.

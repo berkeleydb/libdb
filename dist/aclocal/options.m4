@@ -258,6 +258,13 @@ AC_ARG_ENABLE(o_direct,
 	[db_cv_o_direct="$enable_o_direct"], [db_cv_o_direct="no"])
 AC_MSG_RESULT($db_cv_o_direct)
 
+AC_MSG_CHECKING(if --enable-tpm option specified)
+AC_ARG_ENABLE(tpm,
+	[AS_HELP_STRING([--enable-tpm],
+			[Enable the TPM 2.0 encryption key provider (needs libtss2).])],
+	[db_cv_tpm="$enable_tpm"], [db_cv_tpm="no"])
+AC_MSG_RESULT($db_cv_tpm)
+
 AC_MSG_CHECKING(if --enable-posixmutexes option specified)
 AC_ARG_ENABLE(posixmutexes,
 	[AS_HELP_STRING([--enable-posixmutexes],

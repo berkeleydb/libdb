@@ -9,6 +9,7 @@
 #include "db_config.h"
 
 #include "db_int.h"
+#include "dbinc/crypto.h"
 #include "dbinc/mp.h"
 #include "dbinc/lock.h"
 #include "dbinc/log.h"
@@ -355,6 +356,18 @@ creation:
 	memset(&tregion, 0, sizeof(tregion));
 	nregions = __memp_max_regions(env) + 5;
 	size = nregions * sizeof(REGION);
+	/*
+	 * RFC 0019: reserve region space for the CIPHER struct (salted verifier
+	 * + wrapped DEK) when encryption is configured.  The password is no
+	 * longer stored in the region, and a non-password provider leaves
+	 * passwd_len == 0, so sizing off passwd_len (as the old password-copy
+	 * code did) under-reserves and __env_alloc(sizeof(CIPHER)) can later
+	 * fail.  Reserve for the struct itself instead.
+	 */
+#ifdef HAVE_CRYPTO
+	if (env->crypto_handle != NULL)
+		size += __env_alloc_size(sizeof(CIPHER));
+#endif
 	size += dbenv->passwd_len;
 	size += (dbenv->thr_max + dbenv->thr_max / 4) *
 	    __env_alloc_size(sizeof(DB_THREAD_INFO));

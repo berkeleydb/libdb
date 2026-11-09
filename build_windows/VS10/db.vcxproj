@@ -239,6 +239,8 @@
     <ClCompile Include="..\..\src\db\crdel_auto.c"/>
     <ClCompile Include="..\..\src\db\crdel_rec.c"/>
     <ClCompile Condition="exists('..\..\src\crypto\crypto.c')" Include="..\..\src\crypto\crypto.c"/>
+    <ClCompile Condition="exists('..\..\src\crypto\kdf.c')" Include="..\..\src\crypto\kdf.c"/>
+    <ClCompile Condition="exists('..\..\src\crypto\provider.c')" Include="..\..\src\crypto\provider.c"/>
     <ClCompile Include="..\..\lang\cxx\cxx_channel.cpp"/>
     <ClCompile Include="..\..\lang\cxx\cxx_db.cpp"/>
     <ClCompile Include="..\..\lang\cxx\cxx_dbc.cpp"/>
@@ -473,6 +475,7 @@
     <ClCompile Include="..\..\src\sequence\seq_stat.c"/>
     <ClCompile Include="..\..\src\sequence\sequence.c"/>
     <ClCompile Include="..\..\src\hmac\sha1.c"/>
+    <ClCompile Include="..\..\src\hmac\sha256.c"/>
     <ClCompile Include="..\..\src\clib\strsep.c"/>
     <ClCompile Include="..\..\src\txn\txn.c"/>
     <ClCompile Include="..\..\src\txn\txn_auto.c"/>

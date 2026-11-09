@@ -53,13 +53,15 @@ main(int argc, char **argv)
 		{ "DB",		sizeof(DB),	1744 },
 		{ "DBC",	sizeof(DBC),	 552 },
 		/*
-		 * DB_ENV grew 2088 -> 2096 (+8) when RFC 0018 added the
-		 * repmgr_set_tls method pointer to the method table.  This is
-		 * an intended ABI change (ABI-BREAK-INTENDED), coordinated with
-		 * the soname bump (Q6 / RFC 0020).  DB_ENV is library-allocated
-		 * and opaque (A1), so no application embeds it.
+		 * DB_ENV grew 2088 -> 2128 at level 2026.1: +8 for the
+		 * repmgr_set_tls method pointer (RFC 0018) and +32 for the
+		 * set_encrypt_provider/_keyfile/_tpm method pointers and the
+		 * provider state (RFC 0019).  Intended ABI changes
+		 * (ABI-BREAK-INTENDED), covered by the 2026.1 soname bump
+		 * (RFC 0020).  DB_ENV is library-allocated and opaque (A1), so
+		 * no application embeds it.
 		 */
-		{ "DB_ENV",	sizeof(DB_ENV),	2096 },
+		{ "DB_ENV",	sizeof(DB_ENV),	2128 },
 		{ "DB_TXN",	sizeof(DB_TXN),	 336 },
 		{ "DBT",	sizeof(DBT),	  40 },
 		{ "DB_LSN",	sizeof(DB_LSN),	   8 },

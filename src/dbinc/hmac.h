@@ -26,6 +26,17 @@ typedef struct {
 } SHA1_CTX;
 
 /*
+ * SHA-256 (RFC 0019: KDF/verifier/key-wrap only; the page/log MAC stays SHA1).
+ */
+#define	DB_SHA256_DIGEST	32
+typedef struct {
+	u_int8_t	buffer[64];
+	u_int32_t	datalen;
+	u_int64_t	bitlen;
+	u_int32_t	state[8];
+} SHA256_CTX;
+
+/*
  * AES assumes the SHA1 checksumming (also called MAC)
  */
 #define	DB_MAC_MAGIC	"mac derivation key magic value"

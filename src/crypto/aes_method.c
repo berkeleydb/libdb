@@ -15,6 +15,10 @@
 #include "dbinc/crypto.h"
 #include "dbinc/hmac.h"
 
+#if defined(HAVE_MLOCK) && !defined(DB_WIN32)
+#include <sys/mman.h>
+#endif
+
 #ifdef HAVE_CRYPTO_IPP
 #include <ippcp.h>
 #endif
@@ -47,6 +51,15 @@ __aes_setup(env, db_cipher)
 	db_cipher->init = __aes_init;
 	if ((ret = __os_calloc(env, 1, sizeof(AES_CIPHER), &aes_cipher)) != 0)
 		return (ret);
+	/*
+	 * RFC 0019: best-effort lock the derived key material out of swap.
+	 * Not fatal if the platform or RLIMIT_MEMLOCK disallows it.
+	 */
+#if defined(HAVE_MLOCK) && !defined(DB_WIN32)
+	(void)mlock(aes_cipher, sizeof(AES_CIPHER));
+#elif defined(DB_WIN32)
+	(void)VirtualLock(aes_cipher, sizeof(AES_CIPHER));
+#endif
 #ifdef	HAVE_CRYPTO_IPP
 	/*
 	 * IPP AES encryption context size can only be obtained through this
@@ -96,6 +109,13 @@ __aes_close(env, data)
 #ifdef	HAVE_CRYPTO_IPP
 	AES_CIPHER *aes_cipher = (AES_CIPHER *)data;
 	__os_free(env, aes_cipher->ipp_ctx);
+#endif
+	/* RFC 0019: scrub the derived key material before freeing. */
+	__db_explicit_bzero(data, sizeof(AES_CIPHER));
+#if defined(HAVE_MLOCK) && !defined(DB_WIN32)
+	(void)munlock(data, sizeof(AES_CIPHER));
+#elif defined(DB_WIN32)
+	(void)VirtualUnlock(data, sizeof(AES_CIPHER));
 #endif
 	__os_free(env, data);
 	return (0);
@@ -239,6 +259,19 @@ __aes_init(env, db_cipher)
 
 	dbenv = env->dbenv;
 
+	/*
+	 * RFC 0019: in wrapping mode the page/log key derives from the
+	 * unwrapped DEK; otherwise (legacy / default password mode) it derives
+	 * from the password exactly as before, so existing encrypted databases
+	 * open unchanged.
+	 */
+	if (db_cipher->dek_len != 0) {
+		/* The MAC key must also derive from the DEK, not the password. */
+		__db_derive_mac(db_cipher->dek, db_cipher->dek_len,
+		    db_cipher->mac_key);
+		return (__aes_derivekeys(env, db_cipher,
+		    db_cipher->dek, db_cipher->dek_len));
+	}
 	return (__aes_derivekeys(
 	    env, db_cipher, (u_int8_t *)dbenv->passwd, dbenv->passwd_len));
 }

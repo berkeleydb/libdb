@@ -107,6 +107,8 @@
     <File RelativePath="..\..\src\db\crdel_auto.c"/>
     <File RelativePath="..\..\src\db\crdel_rec.c"/>
     <File RelativePath="..\..\src\crypto\crypto.c"/>
+    <File RelativePath="..\..\src\crypto\kdf.c"/>
+    <File RelativePath="..\..\src\crypto\provider.c"/>
     <File RelativePath="..\..\lang\cxx\cxx_channel.cpp"/>
     <File RelativePath="..\..\lang\cxx\cxx_db.cpp"/>
     <File RelativePath="..\..\lang\cxx\cxx_dbc.cpp"/>
@@ -351,6 +353,7 @@
     <File RelativePath="..\..\src\sequence\seq_stat.c"/>
     <File RelativePath="..\..\src\sequence\sequence.c"/>
     <File RelativePath="..\..\src\hmac\sha1.c"/>
+    <File RelativePath="..\..\src\hmac\sha256.c"/>
     <File RelativePath="..\..\src\clib\strsep.c"/>
     <File RelativePath="..\..\src\txn\txn.c"/>
     <File RelativePath="..\..\src\txn\txn_auto.c"/>
