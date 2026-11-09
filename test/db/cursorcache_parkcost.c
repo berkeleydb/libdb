@@ -48,6 +48,14 @@
 #define	BATCH		100000
 #define	NKEYS		2000
 #define	RATIO_MAX	1.5
+/*
+ * Each phase is timed REPS times and the fastest run is compared.  The
+ * regression this catches is a persistent slowdown (every insert walks an
+ * active queue full of orphans), so it survives the minimum; a one-off stall
+ * on a shared runner does not.  One sample per phase gave 0.95-1.12 on 11 CI
+ * runs and 1.52 on the twelfth.
+ */
+#define	REPS		5
 
 /*
  * The ratio is a single-thread insert-time comparison, so it needs a quiet
@@ -135,6 +143,22 @@ timed_inserts(int phase)
 	return (t1 - t0);
 }
 
+static double
+min_inserts(int phase)
+{
+	double best, t;
+	int r;
+
+	best = -1.0;
+	for (r = 0; r < REPS; r++) {
+		if ((t = timed_inserts(phase)) < 0.0)
+			return (-1.0);
+		if (best < 0.0 || t < best)
+			best = t;
+	}
+	return (best);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -176,7 +200,7 @@ main(int argc, char *argv[])
 			goto err;
 	}
 
-	p0 = timed_inserts(0);
+	p0 = min_inserts(0);
 
 	if ((t = malloc(sizeof(*t) * (size_t)pool)) == NULL) {
 		printf("cursorcache_parkcost: OOM\n");
@@ -188,7 +212,7 @@ main(int argc, char *argv[])
 		(void)pthread_join(t[i], NULL);
 	free(t);
 
-	p1 = timed_inserts(1);
+	p1 = min_inserts(1);
 
 	(void)db->close(db, 0);
 	if ((ret = db_create(&v, env, 0)) != 0)
