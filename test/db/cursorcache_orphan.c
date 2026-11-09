@@ -46,6 +46,14 @@
 #define	BATCH		100000
 #define	RATIO_MAX	2.0		/* FAIL if inserts >2x slower. */
 #define	RSS_MAX_KB	2048		/* FAIL if RSS grows >2 MB. */
+/*
+ * Each phase is timed REPS times and the fastest run is compared.  The
+ * regression this catches is a persistent slowdown (every insert walks an
+ * active queue full of orphans), so it survives the minimum; a one-off stall
+ * on a shared runner does not.  One sample per phase gave 1.00-1.13 on 11 CI
+ * runs and 2.25 on the twelfth.
+ */
+#define	REPS		5
 
 /*
  * The RSS bound is meaningful only on Linux with a non-sanitized build:
@@ -123,6 +131,22 @@ timed_inserts(DB_ENV *env, DB *db, int phase)
 	return (t0);
 }
 
+static double
+min_inserts(DB_ENV *env, DB *db, int phase)
+{
+	double best, t;
+	int r;
+
+	best = -1.0;
+	for (r = 0; r < REPS; r++) {
+		if ((t = timed_inserts(env, db, phase)) < 0.0)
+			return (-1.0);
+		if (best < 0.0 || t < best)
+			best = t;
+	}
+	return (best);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -172,7 +196,7 @@ main(int argc, char *argv[])
 			goto err;
 	}
 
-	p0 = timed_inserts(env, db, 0);
+	p0 = min_inserts(env, db, 0);
 	r0 = rss_kb();
 
 	for (i = 0; i < cycles; i++) {
@@ -194,7 +218,7 @@ main(int argc, char *argv[])
 			goto err;
 	}
 
-	p1 = timed_inserts(env, db, 1);
+	p1 = min_inserts(env, db, 1);
 	r1 = rss_kb();
 
 	(void)db->close(db, 0);
