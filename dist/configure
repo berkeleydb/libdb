@@ -871,6 +871,7 @@ enable_debug
 enable_debug_rop
 enable_debug_wop
 enable_diagnostic
+enable_tls
 enable_dst
 enable_faultinject
 enable_handoff_trace
@@ -1581,6 +1582,8 @@ Optional Features:
   --enable-debug_rop      Build a version that logs read operations.
   --enable-debug_wop      Build a version that logs write operations.
   --enable-diagnostic     Build a version with run-time diagnostics.
+  --enable-tls            Build TLS (OpenSSL) support for the Replication
+                          Manager.
   --enable-dst            Build with Deterministic Simulation Testing (DST)
                           fault-injection hooks.
   --enable-faultinject    Build with SQLite-style malloc-failure injection
@@ -3950,6 +3953,20 @@ if test "$db_cv_diagnostic" = "no"; then
 	{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $db_cv_diagnostic" >&5
 printf '%s\n' "$db_cv_diagnostic" >&6; }
 fi
+
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking if --enable-tls option specified" >&5
+printf %s "checking if --enable-tls option specified... " >&6; }
+# Check whether --enable-tls was given.
+if test ${enable_tls+y}
+then :
+  enableval=$enable_tls; db_cv_build_tls="$enable_tls"
+else case e in #(
+  e) db_cv_build_tls="no" ;;
+esac
+fi
+
+{ printf '%s\n' "$as_me:${as_lineno-$LINENO}: result: $db_cv_build_tls" >&5
+printf '%s\n' "$db_cv_build_tls" >&6; }
 
 { printf '%s\n' "$as_me:${as_lineno-$LINENO}: checking if --enable-dst option specified" >&5
 printf %s "checking if --enable-dst option specified... " >&6; }
@@ -28725,6 +28742,44 @@ printf '%s\n' "$as_me: WARNING: Replication manager is not supported." >&2;}
 	fi
 else
 	ADDITIONAL_OBJS="$ADDITIONAL_OBJS rep_stub${o} repmgr_stub${o}"
+fi
+
+# TLS (OpenSSL) support for the Replication Manager can be enabled.  Off by
+# default so the default build adds no OpenSSL dependency.
+if test "$db_cv_build_tls" = "yes"; then
+	if test "$db_cv_build_replication" != "yes"; then
+		as_fn_error $? "--enable-tls requires replication support." "$LINENO" 5
+	fi
+	ac_fn_c_check_header_compile "$LINENO" "openssl/ssl.h" "ac_cv_header_openssl_ssl_h" "$ac_includes_default"
+	if test "x$ac_cv_header_openssl_ssl_h" != xyes; then
+		as_fn_error $? "--enable-tls requires the OpenSSL development headers (openssl/ssl.h)." "$LINENO" 5
+	fi
+	save_LIBS="$LIBS"
+	LIBS="-lssl -lcrypto $LIBS"
+	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+int SSL_CTX_new (); int SSL_library_init ();
+int
+main (void)
+{
+return SSL_CTX_new ();
+  ;
+  return 0;
+}
+_ACEOF
+	if ac_fn_c_try_link "$LINENO"
+	then :
+		:
+	else case e in #(
+	  e) as_fn_error $? "--enable-tls requires libssl and libcrypto." "$LINENO" 5 ;;
+	esac
+	fi
+	rm -f core conftest.err conftest.$ac_objext conftest.beam conftest$ac_exeext conftest.$ac_ext
+	LIBS="$save_LIBS"
+	LIBSO_LIBS="$LIBSO_LIBS -lssl -lcrypto"
+	printf '%s\n' "#define HAVE_REPMGR_SSL 1" >>confdefs.h
+
+	ADDITIONAL_OBJS="$ADDITIONAL_OBJS repmgr_tls${o}"
 fi
 
 # The statistics code can be disabled.

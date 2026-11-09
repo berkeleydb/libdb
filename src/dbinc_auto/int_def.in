@@ -88,6 +88,11 @@
 #define	__db_dbbackup_pp __db_dbbackup_pp@DB_VERSION_UNIQUE_NAME@
 #define	__db_dbbackup __db_dbbackup@DB_VERSION_UNIQUE_NAME@
 #define	__db_backup_pp __db_backup_pp@DB_VERSION_UNIQUE_NAME@
+#define	__db_cursor_cache_register __db_cursor_cache_register@DB_VERSION_UNIQUE_NAME@
+#define	__db_cursor_cache_get __db_cursor_cache_get@DB_VERSION_UNIQUE_NAME@
+#define	__db_cursor_cache_discard __db_cursor_cache_discard@DB_VERSION_UNIQUE_NAME@
+#define	__db_cursor_cache_refresh_enter __db_cursor_cache_refresh_enter@DB_VERSION_UNIQUE_NAME@
+#define	__db_cursor_cache_refresh_leave __db_cursor_cache_refresh_leave@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_close __dbc_close@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_destroy __dbc_destroy@DB_VERSION_UNIQUE_NAME@
 #define	__dbc_cmp __dbc_cmp@DB_VERSION_UNIQUE_NAME@
@@ -857,6 +862,12 @@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
 #define	__repmgr_set_ack_policy __repmgr_set_ack_policy@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_add_tls_pin __repmgr_add_tls_pin@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_set_tls __repmgr_set_tls@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
 #define	__repmgr_site __repmgr_site@DB_VERSION_UNIQUE_NAME@
@@ -2200,6 +2211,8 @@
 #define	__repmgr_close __repmgr_close@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_stop __repmgr_stop@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_set_ack_policy __repmgr_set_ack_policy@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_add_tls_pin __repmgr_add_tls_pin@DB_VERSION_UNIQUE_NAME@
+#define	__repmgr_set_tls __repmgr_set_tls@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_get_ack_policy __repmgr_get_ack_policy@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_env_create __repmgr_env_create@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_env_destroy __repmgr_env_destroy@DB_VERSION_UNIQUE_NAME@
@@ -2311,6 +2324,12 @@
 #define	__repmgr_set_ack_policy __repmgr_set_ack_policy@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_add_tls_pin __repmgr_add_tls_pin@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifndef HAVE_REPLICATION_THREADS
+#define	__repmgr_set_tls __repmgr_set_tls@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifndef HAVE_REPLICATION_THREADS
 #define	__repmgr_site __repmgr_site@DB_VERSION_UNIQUE_NAME@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
@@ -2342,6 +2361,30 @@
 #endif
 #ifndef HAVE_REPLICATION_THREADS
 #define	__repmgr_init_recover __repmgr_init_recover@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_REPMGR_SSL
+#define	__repmgr_ssl_handshake_block __repmgr_ssl_handshake_block@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_REPMGR_SSL
+#define	__repmgr_ssl_init __repmgr_ssl_init@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_REPMGR_SSL
+#define	__repmgr_ssl_destroy __repmgr_ssl_destroy@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_REPMGR_SSL
+#define	__repmgr_ssl_conn_init __repmgr_ssl_conn_init@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_REPMGR_SSL
+#define	__repmgr_ssl_conn_destroy __repmgr_ssl_conn_destroy@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_REPMGR_SSL
+#define	__repmgr_ssl_handshake __repmgr_ssl_handshake@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_REPMGR_SSL
+#define	__repmgr_ssl_read __repmgr_ssl_read@DB_VERSION_UNIQUE_NAME@
+#endif
+#ifdef HAVE_REPMGR_SSL
+#define	__repmgr_ssl_write __repmgr_ssl_write@DB_VERSION_UNIQUE_NAME@
 #endif
 #define	__repmgr_schedule_connection_attempt __repmgr_schedule_connection_attempt@DB_VERSION_UNIQUE_NAME@
 #define	__repmgr_is_server __repmgr_is_server@DB_VERSION_UNIQUE_NAME@

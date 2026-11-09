@@ -124,6 +124,12 @@ int __repmgr_get_ack_policy __P((DB_ENV *, int *));
 int __repmgr_set_ack_policy __P((DB_ENV *, int));
 #endif
 #ifndef HAVE_REPLICATION_THREADS
+int __repmgr_add_tls_pin __P((DB_ENV *, const char *));
+#endif
+#ifndef HAVE_REPLICATION_THREADS
+int __repmgr_set_tls __P((DB_ENV *, const char *, const char *, const char *, u_int32_t));
+#endif
+#ifndef HAVE_REPLICATION_THREADS
 int __repmgr_site __P((DB_ENV *, const char *, u_int, DB_SITE **, u_int32_t));
 #endif
 #ifndef HAVE_REPLICATION_THREADS

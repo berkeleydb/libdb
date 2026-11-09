@@ -152,6 +152,21 @@ __repmgr_accept(env)
 		return (ret);
 	}
 
+#ifdef HAVE_REPMGR_SSL
+	/*
+	 * If TLS is configured, mark this inbound connection for a server-side
+	 * handshake.  It is driven asynchronously by the main select() loop
+	 * (__repmgr_conn_work -> __repmgr_handshake_step); we must not block
+	 * the loop here.  The connection stays in HANDSHAKE_PHASE until the
+	 * handshake completes, so no repmgr bytes are read before then.
+	 */
+	if (env->rep_handle->tls_ctx != NULL &&
+	    (ret = __repmgr_ssl_conn_init(env, conn, 0)) != 0) {
+		(void)__repmgr_destroy_conn(env, conn);
+		return (ret);
+	}
+#endif
+
 	/*
 	 * We don't yet know which site this connection is coming from.  So for
 	 * now, put it on the "orphans" list; we'll move it to the appropriate
@@ -683,7 +698,7 @@ __repmgr_read_from_site(env, conn)
 	 * other branches return.)
 	 */
 	for (;;) {
-		switch ((ret = __repmgr_read_conn(conn))) {
+		switch ((ret = __repmgr_read_conn(env, conn))) {
 #ifndef DB_WIN32
 		case EINTR:
 			continue;
@@ -732,20 +747,40 @@ __repmgr_read_from_site(env, conn)
  * Makes no assumption about synchronization: it's up to the caller to hold
  * mutex if necessary.
  *
- * PUBLIC: int __repmgr_read_conn __P((REPMGR_CONNECTION *));
+ * PUBLIC: int __repmgr_read_conn __P((ENV *, REPMGR_CONNECTION *));
  */
 int
-__repmgr_read_conn(conn)
+__repmgr_read_conn(env, conn)
+	ENV *env;
 	REPMGR_CONNECTION *conn;
 {
 	size_t nr;
 	int ret;
 
+	COMPQUIET(env, NULL);
 	/*
 	 * Keep reading pieces as long as we're making some progress, or until
 	 * we complete the current read phase as defined in iovecs.
 	 */
 	for (;;) {
+#ifdef HAVE_REPMGR_SSL
+		if (conn->ssl != NULL) {
+			/*
+			 * TLS has no scatter-gather read.  Read into one iovec
+			 * segment at a time through SSL_read.
+			 */
+			if ((ret = __repmgr_ssl_read(env, conn,
+			    conn->iovecs.vectors[conn->iovecs.offset].iov_base,
+			    conn->iovecs.vectors[conn->iovecs.offset].iov_len,
+			    &nr)) != 0)
+				return (ret);
+			if (nr == 0)
+				return (DB_REP_UNAVAIL);
+			if (__repmgr_update_consumed(&conn->iovecs, nr))
+				return (0);
+			continue;
+		}
+#endif
 		if ((ret = __repmgr_readv(conn->fd,
 		    &conn->iovecs.vectors[conn->iovecs.offset],
 		    conn->iovecs.count - conn->iovecs.offset, &nr)) != 0)
@@ -2051,10 +2086,31 @@ __repmgr_write_some(env, conn)
 	QUEUED_OUTPUT *output;
 	REPMGR_FLAT *msg;
 	int bytes, ret;
+#ifdef HAVE_REPMGR_SSL
+	size_t nw;
+#endif
 
 	while (!STAILQ_EMPTY(&conn->outbound_queue)) {
 		output = STAILQ_FIRST(&conn->outbound_queue);
 		msg = output->msg;
+#ifdef HAVE_REPMGR_SSL
+		if (conn->ssl != NULL) {
+			switch (ret = __repmgr_ssl_write(env, conn,
+			    &msg->data[output->offset],
+			    msg->length - output->offset, &nw)) {
+			case 0:
+				bytes = (int)nw;
+				break;
+			case WOULDBLOCK:
+				return (0);
+			default:
+				__repmgr_fire_conn_err_event(env, conn, ret);
+				STAT(env->rep_handle->
+				    region->mstat.st_connection_drop++);
+				return (DB_REP_UNAVAIL);
+			}
+		} else
+#endif
 		if ((bytes = sendsocket(conn->fd, &msg->data[output->offset],
 		    msg->length - output->offset, 0)) == SOCKET_ERROR) {
 			switch (ret = net_errno) {

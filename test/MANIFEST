@@ -520,6 +520,10 @@ db	run_windows_srclist
 db	run_db_verify_multifile
 db	run_qam_readpath_bound
 db	run_curadj_dup_partition
+db	run_cursorcache_adjust
+db	run_cursorcache_orphan
+db	run_cursorcache_parkcost
+db	run_cursorcache_envuaf
 db	run_s7_stat_truth
 db	run_s3_mpool_counters
 db	run_s4_mvcc_mtx_reuse
@@ -540,6 +544,10 @@ db	run_mf_discard_order
 # every real cycle is still resolved and no bystander is chosen as a victim,
 # with lockers created and freed on every stripe during each walk.
 db	run_dd_stripes
+# RFC 0018 repmgr TLS wire-capture: proves the marker is on the wire in
+# cleartext and (on an --enable-tls build) absent under TLS.  Plaintext-only
+# on a default build, so it is CI-safe either way.
+db	run_repmgr_tls_wirecap
 # SKIPs (passes) on a build without --enable-dtrace; see the script header.
 db	run_dtrace_probes
 # SKIPs on a build without --enable-compression.  Proves __bam_defdecompress

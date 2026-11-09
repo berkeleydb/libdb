@@ -195,6 +195,13 @@ if test "$db_cv_diagnostic" = "no"; then
 	AC_MSG_RESULT($db_cv_diagnostic)
 fi
 
+AC_MSG_CHECKING(if --enable-tls option specified)
+AC_ARG_ENABLE(tls,
+	[AS_HELP_STRING([--enable-tls],
+			[Build TLS (OpenSSL) support for the Replication Manager.])],
+	[db_cv_build_tls="$enable_tls"], [db_cv_build_tls="no"])
+AC_MSG_RESULT($db_cv_build_tls)
+
 AC_MSG_CHECKING(if --enable-dst option specified)
 AC_ARG_ENABLE(dst,
 	[AS_HELP_STRING([--enable-dst],

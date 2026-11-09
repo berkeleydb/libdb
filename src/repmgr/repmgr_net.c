@@ -184,8 +184,31 @@ __repmgr_finish_connect(env, s, connp)
 	if ((ret = __repmgr_new_connection(env, &conn, s, CONN_CONNECTED)) != 0)
 		return (ret);
 
-	if ((ret = __repmgr_set_keepalive(env, conn)) == 0 &&
-	    (ret = __repmgr_propose_version(env, conn)) == 0)
+	if ((ret = __repmgr_set_keepalive(env, conn)) != 0) {
+		(void)__repmgr_destroy_conn(env, conn);
+		return (ret);
+	}
+
+#ifdef HAVE_REPMGR_SSL
+	/*
+	 * If TLS is configured, perform the client handshake now, on this
+	 * (still blocking) socket, in the connect thread.  Blocking here is
+	 * safe because the connect thread is not the main select() loop, so
+	 * other connections are unaffected.  The main loop then drives only
+	 * the data path, where WANT_READ/WANT_WRITE is handled via the event
+	 * masks.  (Inbound connections, which arrive on the main loop, do the
+	 * handshake asynchronously instead; see __repmgr_accept.)
+	 */
+	if (env->rep_handle->tls_ctx != NULL) {
+		if ((ret = __repmgr_ssl_conn_init(env, conn, 1)) != 0 ||
+		    (ret = __repmgr_ssl_handshake_block(env, conn)) != 0) {
+			(void)__repmgr_destroy_conn(env, conn);
+			return (ret);
+		}
+	}
+#endif
+
+	if ((ret = __repmgr_propose_version(env, conn)) == 0)
 		*connp = conn;
 	else
 		(void)__repmgr_destroy_conn(env, conn);
@@ -1088,6 +1111,31 @@ __repmgr_write_iovecs(env, conn, iovecs, writtenp)
 	memcpy(v, iovecs, sz);
 
 	total_written = 0;
+#ifdef HAVE_REPMGR_SSL
+	if (conn->ssl != NULL) {
+		/*
+		 * TLS has no scatter-gather write.  Write one iovec segment at
+		 * a time through SSL_write, advancing with the same consumed
+		 * bookkeeping.  A WOULDBLOCK leaves the offset where it is so
+		 * the retry re-presents the identical buffer+length (we keep
+		 * SSL_MODE_ENABLE_PARTIAL_WRITE off, which requires that).
+		 */
+		ret = 0;
+		while (v->offset < v->count) {
+			if ((ret = __repmgr_ssl_write(env, conn,
+			    v->vectors[v->offset].iov_base,
+			    v->vectors[v->offset].iov_len, &nw)) != 0)
+				break;
+			total_written += nw;
+			if (__repmgr_update_consumed(v, nw)) /* all written */
+				break;
+		}
+		*writtenp = total_written;
+		if (v != &iovec_buf)
+			__os_free(env, v);
+		return (ret);
+	}
+#endif
 	while ((ret = __repmgr_writev(conn->fd, &v->vectors[v->offset],
 	    v->count-v->offset, &nw)) == 0) {
 		total_written += nw;
@@ -1548,6 +1596,9 @@ __repmgr_destroy_conn(env, conn)
 	    ret == 0)
 		ret = t_ret;
 
+#ifdef HAVE_REPMGR_SSL
+	__repmgr_ssl_conn_destroy(conn);
+#endif
 	__os_free(env, conn);
 	return (ret);
 }

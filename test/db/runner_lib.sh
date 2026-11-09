@@ -55,7 +55,8 @@ rl_default_build() {
 # Sets:
 #   LIB       path to libdb (static preferred, shared fallback)
 #   LIBRPATH  -Wl,-rpath,... when a shared library was chosen (else empty)
-#   EXTRALIBS transitive deps a static libdb needs named explicitly (liburing)
+#   EXTRALIBS transitive deps a static libdb needs named explicitly (liburing,
+#             and libssl/libcrypto when it was built with --enable-tls)
 #
 # Static first: on macOS a .dylib carries a baked-in install name
 # (/usr/local/BerkeleyDB.5.3/lib/...) that takes precedence over -rpath, so a
@@ -79,6 +80,9 @@ rl_find_lib() {
 
 	EXTRALIBS=""
 	for l in $(pkg-config --libs liburing 2>/dev/null); do EXTRALIBS="$EXTRALIBS $l"; done
+	# A static libdb built with --enable-tls pulls in libssl/libcrypto (RFC 0018).
+	nm "$LIB" 2>/dev/null | grep -q "U SSL_CTX_new" && EXTRALIBS="$EXTRALIBS -lssl -lcrypto"
+	return 0
 }
 
 # ---------------------------------------------------------------------------

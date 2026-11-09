@@ -73,6 +73,40 @@ __repmgr_set_ack_policy(dbenv, policy)
 
 /*
  * PUBLIC: #ifndef HAVE_REPLICATION_THREADS
+ * PUBLIC: int __repmgr_add_tls_pin __P((DB_ENV *, const char *));
+ * PUBLIC: #endif
+ */
+int
+__repmgr_add_tls_pin(dbenv, pin)
+	DB_ENV *dbenv;
+	const char *pin;
+{
+	COMPQUIET(pin, NULL);
+	return (__db_norepmgr(dbenv));
+}
+
+/*
+ * PUBLIC: #ifndef HAVE_REPLICATION_THREADS
+ * PUBLIC: int __repmgr_set_tls
+ * PUBLIC:     __P((DB_ENV *, const char *, const char *, const char *,
+ * PUBLIC:     u_int32_t));
+ * PUBLIC: #endif
+ */
+int
+__repmgr_set_tls(dbenv, cert_file, key_file, ca_file, flags)
+	DB_ENV *dbenv;
+	const char *cert_file, *key_file, *ca_file;
+	u_int32_t flags;
+{
+	COMPQUIET(cert_file, NULL);
+	COMPQUIET(key_file, NULL);
+	COMPQUIET(ca_file, NULL);
+	COMPQUIET(flags, 0);
+	return (__db_norepmgr(dbenv));
+}
+
+/*
+ * PUBLIC: #ifndef HAVE_REPLICATION_THREADS
  * PUBLIC: int __repmgr_site
  * PUBLIC:     __P((DB_ENV *, const char *, u_int, DB_SITE **, u_int32_t));
  * PUBLIC: #endif

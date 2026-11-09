@@ -29,3 +29,9 @@ option('dtrace', type: 'feature', value: 'disabled',
 # dependency.  'enabled' requires libtss2 ESAPI (dependency('tss2-esys')).
 option('tpm', type: 'feature', value: 'disabled',
   description: 'TPM 2.0 encryption key provider (needs libtss2 ESAPI)')
+
+# Mirrors autoconf's --enable-tls.  OFF by default so the core library build
+# never depends on OpenSSL.  When 'enabled', TLS for the Replication Manager is
+# compiled in and libssl/libcrypto become a hard requirement.
+option('tls', type: 'feature', value: 'disabled',
+  description: 'TLS (OpenSSL) support for the Replication Manager (RFC 0018)')

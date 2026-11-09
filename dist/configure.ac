@@ -1189,6 +1189,26 @@ else
 	ADDITIONAL_OBJS="$ADDITIONAL_OBJS rep_stub${o} repmgr_stub${o}"
 fi
 
+# TLS (OpenSSL) support for the Replication Manager can be enabled.  It is off
+# by default so the default build adds no OpenSSL dependency.  When enabled, we
+# link against the system OpenSSL/LibreSSL (its own license), not vendored code.
+if test "$db_cv_build_tls" = "yes"; then
+	if test "$db_cv_build_replication" != "yes"; then
+		AC_MSG_ERROR([--enable-tls requires replication support.])
+	fi
+	AC_CHECK_HEADER(openssl/ssl.h, [],
+	    [AC_MSG_ERROR([--enable-tls requires the OpenSSL development headers (openssl/ssl.h).])])
+	AC_CHECK_LIB(crypto, EVP_EncryptInit_ex, [],
+	    [AC_MSG_ERROR([--enable-tls requires libcrypto.])])
+	AC_CHECK_LIB(ssl, SSL_CTX_new, [],
+	    [AC_MSG_ERROR([--enable-tls requires libssl.])])
+	LIBSO_LIBS="$LIBSO_LIBS -lssl -lcrypto"
+	AC_DEFINE(HAVE_REPMGR_SSL)
+	AH_TEMPLATE(HAVE_REPMGR_SSL,
+	    [Define to 1 if building TLS (OpenSSL) support for the Replication Manager.])
+	ADDITIONAL_OBJS="$ADDITIONAL_OBJS repmgr_tls${o}"
+fi
+
 # The statistics code can be disabled.
 if test "$db_cv_build_statistics" = "yes"; then
 	AC_DEFINE(HAVE_STATISTICS)

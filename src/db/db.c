@@ -575,6 +575,16 @@ __env_setup(dbp, txn, fname, dname, id, flags)
 	}
 	MUTEX_UNLOCK(env, env->mtx_dblist);
 
+	/*
+	 * RFC 0021: give the handle a process-local, never-reused serial and add
+	 * it to the cursor-cache live-handle registry, so the per-thread
+	 * transient-cursor cache can tell this live handle from a freed one
+	 * reusing its heap address -- without ever dereferencing a possibly-freed
+	 * handle or env.  Done outside mtx_dblist: the registry mutex is a leaf
+	 * and must not be taken under another lock (lock-order discipline).
+	 */
+	__db_cursor_cache_register(dbp);
+
 	return (0);
 }
 
@@ -910,12 +920,28 @@ __db_refresh(dbp, txn, flags, deferred_closep, reuse)
 	 * routine.  Note that any failure on a close is considered "really
 	 * bad" and we just break out of the loop and force forward.
 	 */
+	/*
+	 * RFC 0021: discard any per-thread transient-cursor cache references to
+	 * this handle BEFORE we touch its cursor queues.  Discard removes the
+	 * handle from the live-handle registry (under the registry mutex), so any
+	 * concurrent reconcile on another thread either already finished moving a
+	 * cached cursor to the free queue (the registry mutex serialises it) or
+	 * now sees this handle as closed and leaves its queues alone.  After this
+	 * returns, only this thread touches dbp's cursor queues, so the unlocked
+	 * resync probe and the teardown walk below are race-free.  The epoch bump
+	 * makes OTHER threads' stale slots miss; the refresh-enter/leave bracket
+	 * stops THIS thread's re-entrant __dbc_close from re-caching the cursors
+	 * it is destroying.
+	 */
+	__db_cursor_cache_discard(env, dbp);
+
 	resync = 0;
 	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++)
 		if (TAILQ_FIRST(&dbp->cq_parts[cq_i].active_queue) != NULL) {
 			resync = 1;
 			break;
 		}
+	__db_cursor_cache_refresh_enter();
 	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++)
 		while ((dbc =
 		    TAILQ_FIRST(&dbp->cq_parts[cq_i].active_queue)) != NULL) {
@@ -929,6 +955,7 @@ __db_refresh(dbp, txn, flags, deferred_closep, reuse)
 				break;
 			}
 		}
+	__db_cursor_cache_refresh_leave();
 
 	for (cq_i = 0; cq_i < DB_CURSOR_NPART; cq_i++)
 		while ((dbc =

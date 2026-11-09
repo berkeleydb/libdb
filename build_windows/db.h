@@ -1105,6 +1105,11 @@ struct __db_txn_token {
 #define	DB_REPMGR_ACKS_ONE_PEER		6
 #define	DB_REPMGR_ACKS_QUORUM		7
 
+/* repmgr_set_tls() flags (RFC 0018). */
+#define	DB_REPMGR_TLS_VERIFY_PEER	0x00000001 /* Verify peer cert (default). */
+#define	DB_REPMGR_TLS_NO_VERIFY		0x00000002 /* Disable verification. */
+#define	DB_REPMGR_TLS_REQUIRE		0x00000004 /* Refuse plaintext peers. */
+
 /* Replication timeout configuration values. */
 #define	DB_REP_ACK_TIMEOUT		1	/* RepMgr acknowledgements. */
 #define	DB_REP_CHECKPOINT_DELAY		2	/* Master checkpoint delay. */
@@ -1591,6 +1596,16 @@ struct __db {
 	u_int8_t fileid[DB_FILE_ID_LEN];/* File's unique ID for locking. */
 
 	u_int32_t adj_fileid;		/* File's unique ID for curs. adj. */
+
+	/*
+	 * Process-local, never-reused serial assigned at open from a global
+	 * counter (RFC 0021).  The per-thread transient-cursor cache stores it
+	 * in each slot; a slot is validated by finding this handle live in
+	 * env->dblist AND matching this serial, which defeats ABA when a closed
+	 * handle's heap address is reused by a later open.  Not a region or
+	 * on-disk field (handle is process-local); ABI-only.
+	 */
+	u_int32_t cursor_cache_gen;
 
 #define	DB_LOGFILEID_INVALID	-1
 	FNAME *log_filename;		/* File's naming info for logging. */
@@ -2776,6 +2791,8 @@ struct __db_env {
 		void (*)(DB_ENV *, DB_CHANNEL *, DBT *, u_int32_t, u_int32_t),
 		u_int32_t));
 	int  (*repmgr_set_ack_policy) __P((DB_ENV *, int));
+	int  (*repmgr_set_tls) __P((DB_ENV *,
+		const char *, const char *, const char *, u_int32_t));
 	int  (*repmgr_site)
 		__P((DB_ENV *, const char *, u_int, DB_SITE**, u_int32_t));
 	int  (*repmgr_site_by_eid) __P((DB_ENV *, int, DB_SITE**));
