@@ -27,6 +27,7 @@ process. Status: Draft · Accepted · Rejected · Superseded · Implemented.
 | [0021](0021-transient-cursor-cache.md) | Per-thread transient-cursor cache: reuse `DB->get`/`put`/`del` transient cursors from process-local thread state, removing the cursor-queue partition mutex from the common path (O-D1) | Draft | Normative |
 | [0023](0023-ssi-multilevel-conflict-detection.md) | SSI cross-leaf write-skew miss — **Withdrawn**: diagnosed as a plain bug and fixed directly (no design/format change); kept as a postmortem | Withdrawn |
 | [0024](0024-runtime-fault-injection.md) | Runtime fault injection as a DST layer: netns + tc netem, libfiu, libdirectio, libumem and FAINT on one Linux host, for single-node, HA and XA scenarios with ack-log oracles | Draft |
+| [0025](0025-cbmc-coverage.md) | Expand CBMC coverage: election winner selection, vote tally, majority intersection, ack-policy durability, btree prefix decompression, queue record arithmetic, log header and region-allocator size checks | Draft |
 
 <!-- Add a row per RFC. Keep the number 4-digit zero-padded and monotonic. -->
 
