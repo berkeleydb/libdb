@@ -158,18 +158,20 @@ writer(void *arg)
 	DB *db = (DB *)arg;
 	int i, k, v;
 	char got[32], want[32];
+	int ret;
 
 	for (i = 0; i < ITERS && !stop && !failed; i++) {
 		k = (i * 37 + (int)(intptr_t)pthread_self()) % NKEYS;
 		if (k < 0)
 			k = -k % NKEYS;
 		v = i + 1;
-		if (put_key(db, k, v) != 0) {
-			(void)fail("writer put", 1);
+		/* Report the real code: passing 1 printed EPERM for any error. */
+		if ((ret = put_key(db, k, v)) != 0) {
+			(void)fail("writer put", ret);
 			return (NULL);
 		}
-		if (get_key(db, k, got, sizeof(got)) != 0) {
-			(void)fail("writer get", 1);
+		if ((ret = get_key(db, k, got, sizeof(got))) != 0) {
+			(void)fail("writer get", ret);
 			return (NULL);
 		}
 		mkval(k, v, want, sizeof(want));
